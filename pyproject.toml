@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=70", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aic2026"
+version = "0.1.0"
+description = "Resumable local/Colab/Kaggle execution scaffold for AIC 2026 video retrieval"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+ml = [
+  "numpy>=1.26,<3",
+  "pillow>=10,<12",
+]
+
+[project.scripts]
+aic = "aic2026.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+aic2026 = ["db/*.sql"]

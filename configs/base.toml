@@ -1,0 +1,19 @@
+[project]
+name = "aic2026"
+schema_version = 1
+
+[paths]
+# Store RELATIVE paths in manifests/DB. Roots are resolved per environment.
+data_root = ""
+work_root = ""
+artifact_root = ""
+
+[jobs]
+checkpoint_every_items = 50
+max_item_retries = 2
+fail_fast_data_integrity = true
+continue_on_item_error = true
+
+[artifacts]
+require_done_marker = true
+checksum = "sha256"

@@ -1,0 +1,11 @@
+[environment]
+name = "colab"
+
+[paths]
+# Keep active compute on /content. Persist completed checkpoints/artifacts to Drive.
+data_root = "/content/aic_input"
+work_root = "/content/aic_work"
+artifact_root = "/content/drive/MyDrive/AIC_2026_ARTIFACTS"
+
+[jobs]
+checkpoint_every_items = 50

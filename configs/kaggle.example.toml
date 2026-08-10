@@ -1,0 +1,10 @@
+[environment]
+name = "kaggle"
+
+[paths]
+data_root = "/kaggle/input/aic2026-shards"
+work_root = "/kaggle/working/aic_work"
+artifact_root = "/kaggle/working/aic_artifacts"
+
+[jobs]
+checkpoint_every_items = 50

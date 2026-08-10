@@ -1,0 +1,59 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Raw / derived data - NEVER COMMIT
+/data/
+/cache/
+/work/
+/artifacts/incoming/*
+/artifacts/verified/*
+/artifacts/rejected/*
+!/artifacts/incoming/.gitkeep
+!/artifacts/verified/.gitkeep
+!/artifacts/rejected/.gitkeep
+/db/*.sqlite
+/db/*.db
+/indexes/
+/outputs/
+
+# ML/media artifacts
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.wav
+*.flac
+*.jpg
+*.jpeg
+*.png
+*.npy
+*.npz
+*.parquet
+*.index
+*.faiss
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Local config with machine-specific paths
+configs/local.toml
+configs/colab.toml
+configs/kaggle.toml
+
+manifests/shards/
+manifests/demo.jsonl
+*.egg-info/

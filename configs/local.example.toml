@@ -1,0 +1,11 @@
+[environment]
+name = "local-windows"
+
+[paths]
+# Prefer a stable readable Drive path. Do not hard-code .shortcut-targets-by-id.
+data_root = "G:/My Drive/AI_challenge/AIC_2026"
+work_root = "F:/AIC_WORK"
+artifact_root = "F:/AIC_WORK/artifacts"
+
+[jobs]
+checkpoint_every_items = 50
