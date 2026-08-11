@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import json
+import re
+from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from aic2026.core.paths import PathContractError, normalize_relpath
 
 
 EVAL_SCHEMA_VERSION = 1
 QUERY_TYPES = {"KIS", "QA", "TRAKE"}
 TRAP_CATEGORIES = {
     "visual", "micro_moment", "ocr_only", "asr_only",
-    "event_chain", "count", "spatial_motion",
+    "event_chain", "count", "spatial_motion", "unclassified",
 }
 SPLITS = {"dev", "holdout"}
 LABEL_STATUSES = {"labeled", "unlabeled_reference"}
@@ -41,6 +45,38 @@ def _validate_ranges(value: Any, query_id: str) -> list[dict[str, int]]:
             )
         normalized.append({"start_frame": start, "end_frame": end})
     return normalized
+
+
+def _validate_source_provenance(value: Any) -> dict[str, str] | None:
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise EvalContractError("source_provenance phải là object")
+    try:
+        source_relpath = normalize_relpath(
+            _nonempty_string(value.get("source_relpath"), "source_provenance.source_relpath")
+        )
+    except PathContractError as exc:
+        raise EvalContractError(f"source_provenance.source_relpath không hợp lệ: {exc}") from exc
+    source_sha256 = _nonempty_string(
+        value.get("source_sha256"), "source_provenance.source_sha256"
+    ).lower()
+    if re.fullmatch(r"[0-9a-f]{64}", source_sha256) is None:
+        raise EvalContractError("source_provenance.source_sha256 phải là SHA-256 hợp lệ")
+    imported_at = _nonempty_string(value.get("imported_at"), "source_provenance.imported_at")
+    try:
+        datetime.fromisoformat(imported_at.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise EvalContractError("source_provenance.imported_at phải là ISO-8601 hợp lệ") from exc
+    parser_version = _nonempty_string(
+        value.get("parser_version"), "source_provenance.parser_version"
+    )
+    return {
+        "source_relpath": source_relpath,
+        "source_sha256": source_sha256,
+        "imported_at": imported_at,
+        "parser_version": parser_version,
+    }
 
 
 def validate_query(raw: Any) -> dict[str, Any]:
@@ -102,6 +138,7 @@ def validate_eval_dataset(raw: Any) -> tuple[dict[str, Any], dict[str, Any]]:
         raise EvalContractError(f"schema_version phải bằng {EVAL_SCHEMA_VERSION}")
     dataset_id = _nonempty_string(raw.get("dataset_id"), "dataset_id")
     dataset_version = _nonempty_string(raw.get("dataset_version"), "dataset_version")
+    source_provenance = _validate_source_provenance(raw.get("source_provenance"))
     queries_raw = raw.get("queries")
     if not isinstance(queries_raw, list) or not queries_raw:
         raise EvalContractError("queries phải là danh sách không rỗng")
@@ -123,6 +160,8 @@ def validate_eval_dataset(raw: Any) -> tuple[dict[str, Any], dict[str, Any]]:
         "dataset_version": dataset_version,
         "queries": queries,
     }
+    if source_provenance is not None:
+        normalized["source_provenance"] = source_provenance
     summary = {
         "dataset_id": dataset_id,
         "dataset_version": dataset_version,

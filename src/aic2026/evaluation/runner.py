@@ -238,9 +238,14 @@ def run_baseline_evaluation(
                 predictions.append({
                     "rank": rank,
                     "embedding_id": embedding_id,
+                    "stable_id": embedding_id,
                     "video_id": row["video_id"],
                     "frame_idx": row["frame_idx"],
                     "keyframe_id": row.get("keyframe_id"),
+                    "keyframe_relpath": row.get("keyframe_relpath"),
+                    "pts_time": row.get("pts_time"),
+                    "csv_n": row.get("csv_n"),
+                    "clip_row": row.get("clip_row"),
                     "score": similarity,
                 })
             score = score_query(query, predictions)

@@ -41,6 +41,30 @@ def test_eval_contract_accepts_labeled_and_unlabeled_queries():
     assert summary["unlabeled"] == 1
 
 
+def test_eval_contract_preserves_valid_source_provenance():
+    raw = _dataset([_query()])
+    raw["source_provenance"] = {
+        "source_relpath": "inputs/group-a.txt",
+        "source_sha256": "a" * 64,
+        "imported_at": "2026-08-11T00:00:00+00:00",
+        "parser_version": "test-v1",
+    }
+    normalized, _ = validate_eval_dataset(raw)
+    assert normalized["source_provenance"] == raw["source_provenance"]
+
+
+def test_eval_contract_rejects_absolute_source_provenance_path():
+    raw = _dataset([_query()])
+    raw["source_provenance"] = {
+        "source_relpath": "F:/private/group-a.txt",
+        "source_sha256": "a" * 64,
+        "imported_at": "2026-08-11T00:00:00+00:00",
+        "parser_version": "test-v1",
+    }
+    with pytest.raises(EvalContractError, match="source_relpath"):
+        validate_eval_dataset(raw)
+
+
 @pytest.mark.parametrize(
     "bad_range",
     [

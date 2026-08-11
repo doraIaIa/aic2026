@@ -105,6 +105,7 @@ def test_runner_preserves_valid_result_when_another_query_fails_and_records_prov
         for line in (tmp_path / "run" / "predictions.jsonl").read_text(encoding="utf-8").splitlines()
     ]
     assert rows[0]["query_id"] == "good" and rows[0]["score"]["metrics"]["r_at_1"] == 1
+    assert rows[0]["predictions"][0]["stable_id"] == 1
     assert rows[1]["query_id"] == "bad" and rows[1]["status"] == "ERROR"
     summary = json.loads((tmp_path / "run" / "summary.json").read_text(encoding="utf-8"))
     assert summary["counts"]["labeled"] == 1

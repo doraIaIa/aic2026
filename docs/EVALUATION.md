@@ -12,7 +12,7 @@
 | TRAKE scorer chính thức | BLOCKED_BY_SCORING_CONTRACT |
 | Metric chất lượng trên Group A | BLOCKED_BY_GROUND_TRUTH |
 
-Không tìm thấy `query-p3-groupA.zip`, 35 query text hoặc ground truth Group A trong repository, workspace hay root BTC được kiểm tra ngày 11/08/2026. File `AIC2026_RECOVERED_MASTER_PLAN.md` chỉ nhắc tên archive và một số nhóm lỗi; nội dung này không đủ để tái tạo 35 query. Không query, `video_id`, frame range hoặc answer nào được suy diễn từ mô tả đó.
+Đã nhận và import `query-p3-groupA_combined.txt` ngày 11/08/2026: 35 query gồm 29 KIS, 4 QA và 2 TRAKE. Nguồn có SHA-256 `ad9044eb901042ac5760c772b1297f2ecfd94e4a2b2abf9b8121155387586e80`. Toàn bộ query vẫn là `unlabeled_reference`; không `video_id`, frame range hoặc answer nào được tự tạo.
 
 ### Audit implementation trước task
 
@@ -30,6 +30,12 @@ Evaluation dataset là một JSON object:
   "schema_version": 1,
   "dataset_id": "group-a-reference",
   "dataset_version": "v1",
+  "source_provenance": {
+    "source_relpath": "query-p3-groupA_combined.txt",
+    "source_sha256": "<sha256>",
+    "imported_at": "<ISO-8601 UTC>",
+    "parser_version": "group-a-combined-v1"
+  },
   "queries": [
     {
       "query_id": "stable-query-id",
@@ -53,7 +59,9 @@ Giá trị hợp lệ:
 - `query_type`: `KIS`, `QA`, `TRAKE`;
 - `split`: `dev`, `holdout`;
 - `label_status`: `labeled`, `unlabeled_reference`;
-- `trap_category`: `visual`, `micro_moment`, `ocr_only`, `asr_only`, `event_chain`, `count`, `spatial_motion`.
+- `trap_category`: `visual`, `micro_moment`, `ocr_only`, `asr_only`, `event_chain`, `count`, `spatial_motion`, `unclassified`.
+
+`unclassified` chỉ dùng cho query reference chưa được thẩm định trap category; importer không suy diễn category từ nội dung.
 
 Query `unlabeled_reference` không được chứa ground truth hoặc label provenance. Query `labeled` phải có `label_provenance.source`. KIS/TRAKE labeled phải có `gt_video_id` và ít nhất một inclusive frame range hợp lệ; QA labeled phải có `gt_answer`.
 
@@ -97,6 +105,11 @@ Runner ghi error theo query và tiếp tục các query còn lại. Artifact đ�
 ## 5. CLI
 
 ```powershell
+python -m aic2026.cli import-combined-queries `
+  --input query-p3-groupA_combined.txt `
+  --out F:\AIC_WORK\evaluation\group-a-unlabeled-v1.json `
+  --expected-sha256 ad9044eb901042ac5760c772b1297f2ecfd94e4a2b2abf9b8121155387586e80
+
 python -m aic2026.cli validate-eval-dataset --dataset <eval.json>
 
 python -m aic2026.cli run-baseline-eval `
@@ -107,6 +120,11 @@ python -m aic2026.cli run-baseline-eval `
   --experiment-name <name>
 
 python -m aic2026.cli eval-summary --run-dir <run-dir>
+
+python -m aic2026.cli export-eval-candidates `
+  --dataset <eval.json> `
+  --run-dir <run-dir> `
+  --out <new-review-dir>
 ```
 
 Integrity/contract error trả exit code khác 0. Dataset không có label vẫn hợp lệ nhưng summary phải ghi `BLOCKED_BY_GROUND_TRUTH` và metrics bằng `null`.
@@ -127,7 +145,29 @@ Một query tổng hợp `a person riding a bicycle` đã chạy trên productio
 
 Đây là kiểm tra vận hành, không phải quality benchmark và không tạo Recall@K thật.
 
-## 7. Quyết định provenance M1
+## 7. Group A unlabeled baseline run
+
+Run `group-a-clip-only-v1` đã truy hồi top 100 cho đủ 35 query trên frozen M1 index:
+
+| Chỉ số | Giá trị |
+|---|---:|
+| Query | 35 |
+| KIS / QA / TRAKE | 29 / 4 / 2 |
+| Labeled / unlabeled | 0 / 35 |
+| Failed | 0 |
+| Predictions | 3.500 |
+| Latency p50 / p95 | 291,66 ms / 377,56 ms |
+| Quality status | BLOCKED_BY_GROUND_TRUTH |
+
+Artifacts:
+
+- dataset: `F:\AIC_WORK\evaluation\group-a-unlabeled-v1.json`;
+- run: `F:\AIC_WORK\artifacts\evaluation\group-a-unlabeled-v1`;
+- candidate review và failure sheet: `F:\AIC_WORK\artifacts\evaluation\group-a-review-v1`.
+
+Recall@K là `null`, không phải 0. Khi có ground truth có provenance, tạo dataset version mới, tách DEV/HOLDOUT và chạy lại scorer; không sửa dataset hoặc artifact đã hoàn tất.
+
+## 8. Quyết định provenance M1
 
 Artifact `clip-faiss-btc-v1` đủ điều kiện làm **frozen baseline artifact** cho Evaluation Closure vì:
 

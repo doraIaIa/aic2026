@@ -10,9 +10,12 @@
 - Truy hồi text-to-keyframe dùng OpenCLIP `ViT-B-32`, pretrained `openai`, đúng theo notebook baseline BTC.
 - Evaluation contract version 1, KIS scorer và CLIP-only runner đã hoàn tất.
 - Production-index smoke run: 1 unlabeled, 0 failed, quality status `BLOCKED_BY_GROUND_TRUTH`.
+- Đã import 35 Group A query text: 29 KIS, 4 QA, 2 TRAKE; tất cả là `unlabeled_reference`.
+- Group A baseline top-100: 35/35 query thành công, 3.500 predictions, p50 291,66 ms, p95 377,56 ms.
+- Candidate review artifact và failure sheet đã sẵn sàng tại `F:\AIC_WORK\artifacts\evaluation\group-a-review-v1`.
 
 ## What is not done
-- Import 35 query Group A và gắn ground truth có provenance.
+- Gắn ground truth có provenance cho 35 query Group A và phân loại trap category.
 - DEV/HOLDOUT Recall@1/5/20/50/100 và failure analysis.
 - QA/TRAKE scorer chính thức do chưa có scoring contract.
 - OCR, ASR, SigLIP, Objects extraction.
@@ -36,7 +39,7 @@
 - The dataset scale is significant, and I/O latency to Google Drive is high. Any full traversal requires caching or batched logic.
 
 ## Next Phase
-- Cung cấp Group A query source/ground truth, validate contract rồi chạy baseline DEV/HOLDOUT.
+- Thẩm định candidate review, gắn ground truth có provenance, tạo DEV/HOLDOUT rồi tính Recall@K thật.
 
 > [!CAUTION]
 > **CHỈ THỊ RÕ RÀNG:** Chưa bắt đầu OCR, ASR, SigLIP hoặc Objects cho đến khi milestone tiếp theo được phê duyệt.

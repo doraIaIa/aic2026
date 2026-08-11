@@ -27,6 +27,8 @@ from aic2026.retrieval.clip_faiss import (
     write_clip_manifest,
 )
 from aic2026.evaluation.contract import EvalContractError, load_eval_dataset
+from aic2026.evaluation.importers import import_combined_queries
+from aic2026.evaluation.review import export_candidate_review
 from aic2026.evaluation.runner import (
     EvalIntegrityError,
     run_baseline_evaluation,
@@ -234,6 +236,28 @@ def cmd_validate_eval_dataset(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_import_combined_queries(args: argparse.Namespace) -> int:
+    try:
+        dataset, summary = import_combined_queries(
+            args.input,
+            args.out,
+            dataset_id=args.dataset_id,
+            dataset_version=args.dataset_version,
+            source_relpath=args.source_relpath,
+            expected_sha256=args.expected_sha256,
+        )
+    except EvalContractError as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+    _json_print({
+        "status": "IMPORTED",
+        "output": args.out,
+        "source_provenance": dataset.get("source_provenance"),
+        **summary,
+    })
+    return 0
+
+
 def cmd_run_baseline_eval(args: argparse.Namespace) -> int:
     try:
         marker = run_baseline_evaluation(
@@ -263,6 +287,17 @@ def cmd_eval_summary(args: argparse.Namespace) -> int:
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     _json_print({"valid": True, "summary": summary})
     return 0
+
+
+def cmd_export_eval_candidates(args: argparse.Namespace) -> int:
+    try:
+        marker = export_candidate_review(args.dataset, args.run_dir, args.out)
+    except (EvalContractError, EvalIntegrityError) as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+    _json_print(marker)
+    return 0
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aic", description="AIC 2026 reliability/control-plane CLI")
@@ -355,6 +390,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--dataset", required=True, help="file JSON evaluation dataset")
     p.set_defaults(func=cmd_validate_eval_dataset)
 
+    p = sub.add_parser("import-combined-queries", help="import Group A combined TXT thành eval dataset chưa gán nhãn")
+    p.add_argument("--input", required=True, help="file combined TXT UTF-8")
+    p.add_argument("--out", required=True, help="file JSON dataset đầu ra")
+    p.add_argument("--dataset-id", default="group-a-unlabeled")
+    p.add_argument("--dataset-version", default="v1")
+    p.add_argument("--source-relpath", help="đường dẫn nguồn tương đối để lưu provenance")
+    p.add_argument("--expected-sha256", help="checksum nguồn cần khớp; sai checksum sẽ fail closed")
+    p.set_defaults(func=cmd_import_combined_queries)
+
     p = sub.add_parser("run-baseline-eval", help="chạy CLIP-only evaluation trên đúng một split")
     p.add_argument("--dataset", required=True)
     p.add_argument("--index-dir", required=True, help="thư mục M1 index có DONE.json hợp lệ")
@@ -370,6 +414,12 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("eval-summary", help="xác thực và hiển thị summary của evaluation run")
     p.add_argument("--run-dir", required=True)
     p.set_defaults(func=cmd_eval_summary)
+
+    p = sub.add_parser("export-eval-candidates", help="xuất CSV review candidates và failure sheet")
+    p.add_argument("--dataset", required=True)
+    p.add_argument("--run-dir", required=True)
+    p.add_argument("--out", required=True, help="thư mục artifact mới; không ghi đè artifact hoàn tất")
+    p.set_defaults(func=cmd_export_eval_candidates)
 
     return parser
 

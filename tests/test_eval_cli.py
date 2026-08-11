@@ -43,3 +43,21 @@ def test_validate_eval_dataset_cli_exit_codes(tmp_path, capsys):
 
 def test_eval_summary_cli_rejects_missing_artifact(tmp_path):
     assert main(["eval-summary", "--run-dir", str(tmp_path / "missing")]) == 3
+
+
+def test_import_combined_queries_cli_exit_codes(tmp_path, capsys):
+    source = tmp_path / "combined.txt"
+    source.write_text("\n".join(
+        f"===== query-p3-{index}-kis.txt =====\nNội dung {index}\n"
+        for index in range(1, 36)
+    ), encoding="utf-8")
+    output = tmp_path / "eval.json"
+    args = [
+        "import-combined-queries", "--input", str(source), "--out", str(output),
+        "--dataset-id", "group-a", "--dataset-version", "v1",
+    ]
+    assert main(args + ["--expected-sha256", "0" * 64]) == 2
+    assert "REJECTED" in capsys.readouterr().out
+    assert main(args) == 0
+    assert output.is_file()
+    assert "IMPORTED" in capsys.readouterr().out

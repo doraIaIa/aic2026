@@ -8,10 +8,13 @@
 - M1 baseline BTC CLIP + FAISS
 - Evaluation contract v1, KIS scorer và CLIP-only runner
 - Production-index evaluation smoke run với query unlabeled
+- Import 35 Group A query text theo contract v1 và provenance checksum
+- Group A CLIP-only top-100 run: 3.500 predictions, 0 failure
+- Candidate review CSV và failure sheet
 
 ## NEXT
-- Cung cấp/import 35 query Group A và ground truth có provenance
-- Chạy DEV/HOLDOUT baseline, báo Recall@K và failure analysis
+- Thẩm định top candidates và gắn ground truth có provenance
+- Tách DEV/HOLDOUT rồi chạy baseline, báo Recall@K và failure analysis
 
 ## BLOCKED
 - Metric chất lượng baseline: BLOCKED_BY_GROUND_TRUTH
