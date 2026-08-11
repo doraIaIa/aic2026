@@ -22,3 +22,5 @@ These rules are mandatory. If a requested change conflicts with them, stop and r
 18. A shard is trusted only when its `DONE.json` validates against the output checksum and manifest hash.
 19. Do not overwrite a valid completed shard. Recompute into a new artifact/version if model/config/input changes.
 20. Any schema/config contract change requires migration notes and updated tests.
+21. Batch-1 dataset audit is closed. Do not re-audit the full corpus unless the dataset/schema changes or production code reveals a new contradiction.
+22. Before every task, read docs/PROJECT_STATE.md and docs/DATA_CONTRACT_LOCK.md.

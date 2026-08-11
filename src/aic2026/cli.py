@@ -15,6 +15,11 @@ from aic2026.jobs.handlers import get_handler
 from aic2026.jobs.manifest import build_shards, write_jsonl_manifest
 from aic2026.jobs.models import ManifestItem
 from aic2026.jobs.runner import run_shard
+from aic2026.audit.discovery import run_discovery
+from aic2026.audit.modalities import run_modalities
+from aic2026.audit.mapping import run_frame_mapping
+from aic2026.audit.clip import run_clip
+from aic2026.audit.report import generate_reports
 
 
 def _json_print(value) -> None:
@@ -130,6 +135,33 @@ def cmd_init_db(args: argparse.Namespace) -> int:
     return 0 if integrity == "ok" else 4
 
 
+def cmd_audit_dataset(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    resolver = PathResolver.from_config(config)
+    audit_dir = resolver.work_root / "audit"
+    run_discovery(resolver.data_root, audit_dir)
+    run_modalities(resolver.data_root, audit_dir)
+    return 0
+
+def cmd_audit_frame_mapping(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    resolver = PathResolver.from_config(config)
+    audit_dir = resolver.work_root / "audit"
+    run_frame_mapping(resolver.data_root, audit_dir)
+    return 0
+
+def cmd_audit_clip(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    resolver = PathResolver.from_config(config)
+    audit_dir = resolver.work_root / "audit"
+    run_clip(resolver.data_root, audit_dir)
+    return 0
+
+def cmd_audit_report(args: argparse.Namespace) -> int:
+    audit_dir = Path(args.audit_dir)
+    generate_reports(audit_dir)
+    return 0
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aic", description="AIC 2026 reliability/control-plane CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -170,6 +202,22 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("init-db", help="initialize the local SQLite authority database")
     p.add_argument("--db", required=True)
     p.set_defaults(func=cmd_init_db)
+
+    p = sub.add_parser("audit-dataset", help="run read-only filesystem discovery, video, and keyframe inventory")
+    p.add_argument("--config", required=True)
+    p.set_defaults(func=cmd_audit_dataset)
+
+    p = sub.add_parser("audit-frame-mapping", help="verify BTC frame index mappings against decoded frames")
+    p.add_argument("--config", required=True)
+    p.set_defaults(func=cmd_audit_frame_mapping)
+
+    p = sub.add_parser("audit-clip", help="verify CLIP feature shapes and keyframe alignment")
+    p.add_argument("--config", required=True)
+    p.set_defaults(func=cmd_audit_clip)
+
+    p = sub.add_parser("audit-report", help="aggregate audit outputs into M0A_REPORT.md")
+    p.add_argument("--audit-dir", required=True)
+    p.set_defaults(func=cmd_audit_report)
 
     return parser
 
