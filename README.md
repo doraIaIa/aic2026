@@ -62,12 +62,13 @@ Re-run the same command. Completed item IDs are skipped and the finalized artifa
 - Colab/Kaggle bootstrap notebooks
 - Windows/Linux bootstrap scripts
 - tests for resume and corruption detection
+- versioned evaluation contract và validator
+- KIS Recall@1/5/20/50/100 scorer
+- CLIP-only evaluation runner với predictions, latency, provenance và checksum
 
 ## What is deliberately NOT implemented yet
 
-- BTC dataset-specific ingest
-- CLIP/FAISS retrieval
 - Whisper, PaddleOCR, SigLIP2 handlers
-- AIC scorer and UI
+- QA/TRAKE scorer chính thức và UI
 
 Those should be implemented only after the dataset/path/frame mapping contract is verified on the actual corpus. See `docs/IMPLEMENTATION_SPEC.md` and `ANTIGRAVITY_BOOTSTRAP_PROMPT.md`.

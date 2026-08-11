@@ -26,6 +26,12 @@ from aic2026.retrieval.clip_faiss import (
     search_clip_index,
     write_clip_manifest,
 )
+from aic2026.evaluation.contract import EvalContractError, load_eval_dataset
+from aic2026.evaluation.runner import (
+    EvalIntegrityError,
+    run_baseline_evaluation,
+    validate_eval_run_artifact,
+)
 
 
 def _json_print(value) -> None:
@@ -213,6 +219,51 @@ def cmd_search_clip_text(args: argparse.Namespace) -> int:
     _json_print([{"embedding_id": item_id, "score": score} for item_id, score in results])
     return 0
 
+
+def cmd_validate_eval_dataset(args: argparse.Namespace) -> int:
+    try:
+        _, summary = load_eval_dataset(args.dataset)
+    except EvalContractError as exc:
+        _json_print({"valid": False, "error": str(exc)})
+        return 2
+    summary["valid"] = True
+    summary["metric_note"] = (
+        "BLOCKED_BY_GROUND_TRUTH" if summary["labeled"] == 0 else "Có query labeled để chấm"
+    )
+    _json_print(summary)
+    return 0
+
+
+def cmd_run_baseline_eval(args: argparse.Namespace) -> int:
+    try:
+        marker = run_baseline_evaluation(
+            args.dataset,
+            args.index_dir,
+            args.out,
+            split=args.split,
+            experiment_name=args.experiment_name,
+            pipeline_description=args.pipeline_description,
+            model_name=args.model_name,
+            pretrained=args.pretrained,
+            device=args.device,
+        )
+    except (EvalContractError, EvalIntegrityError) as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+    _json_print(marker)
+    return 0
+
+
+def cmd_eval_summary(args: argparse.Namespace) -> int:
+    valid, errors, marker = validate_eval_run_artifact(args.run_dir)
+    if not valid:
+        _json_print({"valid": False, "errors": errors, "marker": marker})
+        return 3
+    summary_path = Path(args.run_dir) / str(marker["summary_file"])
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    _json_print({"valid": True, "summary": summary})
+    return 0
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aic", description="AIC 2026 reliability/control-plane CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -299,6 +350,26 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--pretrained", default="openai")
     p.add_argument("--device", default="cpu")
     p.set_defaults(func=cmd_search_clip_text)
+
+    p = sub.add_parser("validate-eval-dataset", help="xác thực evaluation dataset theo contract versioned")
+    p.add_argument("--dataset", required=True, help="file JSON evaluation dataset")
+    p.set_defaults(func=cmd_validate_eval_dataset)
+
+    p = sub.add_parser("run-baseline-eval", help="chạy CLIP-only evaluation trên đúng một split")
+    p.add_argument("--dataset", required=True)
+    p.add_argument("--index-dir", required=True, help="thư mục M1 index có DONE.json hợp lệ")
+    p.add_argument("--out", required=True, help="thư mục artifact mới; không ghi đè run hoàn tất")
+    p.add_argument("--split", required=True, choices=("dev", "holdout"))
+    p.add_argument("--experiment-name", required=True)
+    p.add_argument("--pipeline-description", default="CLIP-only ViT-B-32/openai baseline")
+    p.add_argument("--model-name", default="ViT-B-32")
+    p.add_argument("--pretrained", default="openai")
+    p.add_argument("--device", default="cpu")
+    p.set_defaults(func=cmd_run_baseline_eval)
+
+    p = sub.add_parser("eval-summary", help="xác thực và hiển thị summary của evaluation run")
+    p.add_argument("--run-dir", required=True)
+    p.set_defaults(func=cmd_eval_summary)
 
     return parser
 

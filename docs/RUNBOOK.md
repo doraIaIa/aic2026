@@ -33,3 +33,30 @@ Run the exact same `run-shard` command. The checkpoint and valid partial records
 ## If output is corrupt
 
 Do not overwrite evidence. Move the directory to `artifacts/rejected/<task>/<shard>-<timestamp>` and rerun to a clean artifact directory.
+
+## Evaluation baseline
+
+Luôn validate dataset trước khi chạy:
+
+```powershell
+python -m aic2026.cli validate-eval-dataset --dataset <eval.json>
+```
+
+DEV và HOLDOUT phải chạy vào hai artifact directory khác nhau:
+
+```powershell
+python -m aic2026.cli run-baseline-eval `
+  --dataset <eval.json> `
+  --index-dir <m1-index-dir> `
+  --out <new-run-dir> `
+  --split dev `
+  --experiment-name <name>
+```
+
+Xác thực output và xem summary:
+
+```powershell
+python -m aic2026.cli eval-summary --run-dir <run-dir>
+```
+
+Nếu summary ghi `BLOCKED_BY_GROUND_TRUTH`, predictions vẫn là artifact hợp lệ nhưng không được diễn giải như metric chất lượng.
