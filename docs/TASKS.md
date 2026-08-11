@@ -12,10 +12,10 @@
 - Group A CLIP-only top-100 run: 3.500 predictions, 0 failure
 - Candidate review CSV và failure sheet
 - M2-ASR pilot code: manifest/shard/resume/checksum/merge/FTS5
-- Group A ASR pilot manifest: 95 video, 4 shard (24/24/24/23)
+- Group A ASR pilot manifest: 95 video, 2 worker shard (48/47)
 
 ## NEXT
-- Chạy 4 faster-whisper `medium`/`vi` pilot shard trên GPU
+- Chạy Colab shard 0 và Kaggle shard 1 bằng faster-whisper `medium`/`vi`
 - Merge transcript, build FTS5 và review ASR hits
 - Thẩm định top candidates và gắn ground truth có provenance
 - Tách DEV/HOLDOUT rồi chạy baseline, báo Recall@K và failure analysis

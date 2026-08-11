@@ -14,6 +14,11 @@ def test_asr_cli_contract_errors_return_nonzero(tmp_path, capsys) -> None:
     ]) == 2
     assert "REJECTED" in capsys.readouterr().out
 
+    assert main([
+        "validate-asr-shard", "--artifact-dir", str(tmp_path / "missing-artifact"),
+    ]) == 3
+    assert '"valid": false' in capsys.readouterr().out
+
     malformed = tmp_path / "segments.jsonl"
     malformed.write_text(json.dumps({
         "segment_id": "bad", "video_id": "V1", "start_sec": 5, "end_sec": 4, "text": "x",

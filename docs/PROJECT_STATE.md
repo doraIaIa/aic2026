@@ -14,13 +14,13 @@
 - Group A baseline top-100: 35/35 query thành công, 3.500 predictions, p50 291,66 ms, p95 377,56 ms.
 - Candidate review artifact và failure sheet đã sẵn sàng tại `F:\AIC_WORK\artifacts\evaluation\group-a-review-v1`.
 - M2-ASR pilot pipeline đã sẵn sàng: faster-whisper `medium`, tiếng Việt, resume/checksum/DONE, merge và SQLite FTS5.
-- Group A ASR pilot manifest có 95 video unique từ top-20 candidates; 4 shard có 24/24/24/23 video.
+- Group A ASR pilot manifest có 95 video unique từ top-20 candidates; kế hoạch chính dùng 2 worker: Colab 48 video và Kaggle 47 video.
 
 ## What is not done
 - Gắn ground truth có provenance cho 35 query Group A và phân loại trap category.
 - DEV/HOLDOUT Recall@1/5/20/50/100 và failure analysis.
 - QA/TRAKE scorer chính thức do chưa có scoring contract.
-- Chạy 4 ASR pilot shard trên GPU và thẩm định transcript/retrieval usefulness.
+- Chạy 2 ASR pilot shard trên GPU và thẩm định transcript/retrieval usefulness.
 - ASR full corpus; OCR, SigLIP và Objects extraction.
 - TRAKE retrieval logic.
 - Application UI.

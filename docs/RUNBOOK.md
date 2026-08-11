@@ -93,23 +93,23 @@ python -m aic2026.cli build-asr-pilot-manifest `
 
 python -m aic2026.cli split-asr-shards `
   --manifest F:\AIC_WORK\asr\manifests\group-a-candidate-pilot-v1.jsonl `
-  --num-shards 4 `
-  --out-dir F:\AIC_WORK\asr\shards\group-a-candidate-pilot-v1
+  --num-shards 2 `
+  --out-dir F:\AIC_WORK\asr\shards\group-a-candidate-pilot-v1-2workers
 ```
 
-Pilot hiện có 95 video: top-10 chỉ có 61 video unique nên builder mở rộng top-20. Bốn shard có 24/24/24/23 video.
+Pilot hiện có 95 video: top-10 chỉ có 61 video unique nên builder mở rộng top-20. Colab chạy shard 0 có 48 video; Kaggle chạy shard 1 có 47 video. Split 4 phần cũ không còn là kế hoạch chính.
 
 Chạy/resume một shard:
 
 ```powershell
 python -m aic2026.cli run-asr-shard `
   --config configs/local.toml `
-  --shard F:\AIC_WORK\asr\shards\group-a-candidate-pilot-v1\shard_000_of_004.json `
-  --out-dir F:\AIC_WORK\artifacts\asr\whisper-medium-vi-pilot-v1\shard_000_of_004 `
-  --model medium --model-revision medium --language vi --device auto
+  --shard F:\AIC_WORK\asr\shards\group-a-candidate-pilot-v1-2workers\shard_000_of_002.json `
+  --out-dir F:\AIC_WORK\artifacts\asr\whisper-medium-vi-pilot-v1\smoke_shard_000_of_002_limit5 `
+  --model medium --model-revision medium --language vi --device auto --limit-videos 5
 ```
 
-Mặc định: faster-whisper, `beam_size=5`, VAD bật, word timestamps tắt, CUDA `float16`, CPU `int8`. Thiếu optional dependency trả lỗi rõ và không ảnh hưởng CLIP baseline. Xem hướng dẫn worker tại `scripts/asr_worker_colab_kaggle.md`.
+Smoke luôn dùng output riêng. Khi smoke validate, bỏ `--limit-videos` và chạy vào `shard_000_of_002` hoặc `shard_001_of_002`. Mặc định: faster-whisper, `beam_size=5`, VAD bật, word timestamps tắt, CUDA `float16`, CPU `int8`. Dùng `validate-asr-shard` trước khi zip. Xem guide và `notebooks/asr_whisper_medium_worker.ipynb`.
 
 Sau khi đủ shard, merge sẽ fail closed nếu DONE/checksum/count sai; mỗi lỗi video riêng lẻ vẫn nằm trong `errors.jsonl`:
 
@@ -127,4 +127,6 @@ python -m aic2026.cli search-asr `
   --query "tên địa danh cần tìm" --top-k 20
 ```
 
-Chỉ chạy full corpus nếu pilot có transcript hữu ích và chi phí chấp nhận được. Với 873 video/4 shard, splitter cân bằng thành 219/218/218/218 video. ASR timestamps chỉ là temporal anchors, không phải submission frame IDs.
+Sau FTS, `export-asr-candidates` chạy batch 35 Group A query và tạo `asr_candidate_review.csv`. `--metadata` là optional; chỉ truyền M1 metadata JSONL đã validate khi cần nearest keyframe/frame.
+
+Chỉ chạy full corpus nếu pilot có transcript hữu ích và chi phí chấp nhận được. Lượt này không tạo hoặc chạy shard cho toàn bộ 873 video. ASR timestamps chỉ là temporal anchors, không phải submission frame IDs.

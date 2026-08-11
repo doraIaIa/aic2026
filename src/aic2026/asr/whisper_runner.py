@@ -115,7 +115,11 @@ def write_checksum_file(root: Path, filenames: list[str]) -> tuple[dict[str, str
 
 def validate_asr_shard_artifact(
     artifact_dir: str | Path,
+    *,
+    duration_tolerance_sec: float = 1.0,
 ) -> tuple[bool, list[str], dict[str, Any] | None]:
+    if duration_tolerance_sec < 0:
+        raise AsrContractError("duration_tolerance_sec phải >= 0")
     root = Path(artifact_dir)
     errors: list[str] = []
     try:
@@ -157,6 +161,58 @@ def validate_asr_shard_artifact(
             errors.append("Số errors rows không khớp")
         if type(marker.get("segment_count")) is int and len(segments) != marker["segment_count"]:
             errors.append("Số segment rows không khớp")
+        video_by_id: dict[str, dict[str, Any]] = {}
+        for row in videos:
+            video_id = row.get("video_id")
+            if not isinstance(video_id, str) or not video_id or video_id in video_by_id:
+                errors.append(f"asr_videos có video_id thiếu/trùng: {video_id}")
+                continue
+            video_by_id[video_id] = row
+        segment_counts: dict[str, int] = {}
+        segment_ids: set[str] = set()
+        for row in segments:
+            video_id = row.get("video_id")
+            segment_id = row.get("segment_id")
+            start = row.get("start_sec")
+            end = row.get("end_sec")
+            text = row.get("text")
+            numeric_time = (
+                isinstance(start, (int, float)) and not isinstance(start, bool)
+                and isinstance(end, (int, float)) and not isinstance(end, bool)
+            )
+            if not isinstance(segment_id, str) or not segment_id or segment_id in segment_ids:
+                errors.append(f"segment_id thiếu/trùng: {segment_id}")
+            else:
+                segment_ids.add(segment_id)
+            if video_id not in video_by_id:
+                errors.append(f"Segment thuộc video không có success row: {video_id}")
+                continue
+            if not numeric_time or start < 0 or end < start:
+                errors.append(f"Timestamp segment không hợp lệ: {segment_id}")
+            duration = video_by_id[video_id].get("duration_sec")
+            if (
+                numeric_time
+                and isinstance(duration, (int, float)) and not isinstance(duration, bool)
+                and duration >= 0 and end > duration + duration_tolerance_sec
+            ):
+                errors.append(f"Segment vượt duration+tolerance: {segment_id}")
+            if not isinstance(text, str) or not text.strip():
+                errors.append(f"Transcript text rỗng: {segment_id}")
+            segment_counts[video_id] = segment_counts.get(video_id, 0) + 1
+        for video_id, row in video_by_id.items():
+            if row.get("segment_count") != segment_counts.get(video_id, 0):
+                errors.append(f"segment_count không khớp cho video {video_id}")
+        if type(processed) is int and processed > 0 and not segments:
+            errors.append("asr_segments.jsonl rỗng dù có video xử lý thành công")
+        failure_ids: set[str] = set()
+        for row in failures:
+            video_id = row.get("video_id")
+            if not isinstance(video_id, str) or not video_id or video_id in failure_ids:
+                errors.append(f"errors.jsonl có video_id thiếu/trùng: {video_id}")
+            else:
+                failure_ids.add(video_id)
+            if not isinstance(row.get("error"), str) or not row["error"].strip():
+                errors.append(f"errors.jsonl thiếu error cho video {video_id}")
     except (OSError, AsrContractError) as exc:
         errors.append(str(exc))
     return not errors, errors, marker
@@ -186,29 +242,17 @@ def run_asr_shard(
     word_timestamps: bool = False,
     device: str = "auto",
     compute_type: str | None = None,
+    limit_videos: int | None = None,
     force: bool = False,
     transcriber_factory: Callable[[str, str, str], Transcriber] | None = None,
 ) -> dict[str, Any]:
     shard_source = Path(shard_path)
     shard = load_asr_shard(shard_source)
-    target = Path(output_dir)
-    if (target / "DONE.json").exists():
-        valid, errors, marker = validate_asr_shard_artifact(target)
-        if valid and not force:
-            if marker and marker.get("input_shard_sha256") == sha256_file(shard_source):
-                return marker
-            raise AsrContractError("ASR artifact hoàn tất thuộc shard khác; dùng output version mới")
-        if not force:
-            raise AsrContractError(f"ASR artifact tồn tại nhưng không hợp lệ: {errors}")
-        _archive_for_force(target)
-    elif force and target.exists():
-        _archive_for_force(target)
-    target.mkdir(parents=True, exist_ok=True)
-
+    if limit_videos is not None and limit_videos <= 0:
+        raise AsrContractError("limit_videos phải > 0")
+    selected_items = shard["items"][:limit_videos] if limit_videos is not None else shard["items"]
     actual_device = detect_device(device)
     actual_compute = compute_type or ("float16" if actual_device == "cuda" else "int8")
-    if actual_device == "cpu":
-        warnings.warn("ASR đang fallback CPU; Whisper medium có thể chạy rất chậm", RuntimeWarning)
     config = {
         "model_size": model_size,
         "model_revision": model_revision,
@@ -219,9 +263,31 @@ def run_asr_shard(
         "word_timestamps": word_timestamps,
         "device": actual_device,
         "compute_type": actual_compute,
+        "limit_videos": limit_videos,
     }
     config_hash = sha256_bytes(json.dumps(config, sort_keys=True).encode("utf-8"))
     shard_hash = sha256_file(shard_source)
+    target = Path(output_dir)
+    if (target / "DONE.json").exists():
+        valid, errors, marker = validate_asr_shard_artifact(target)
+        if valid and not force:
+            if (
+                marker
+                and marker.get("input_shard_sha256") == shard_hash
+                and marker.get("config_hash") == config_hash
+                and marker.get("expected_videos") == len(selected_items)
+            ):
+                return marker
+            raise AsrContractError("ASR artifact hoàn tất thuộc shard/config khác; dùng output version mới")
+        if not force:
+            raise AsrContractError(f"ASR artifact tồn tại nhưng không hợp lệ: {errors}")
+        _archive_for_force(target)
+    elif force and target.exists():
+        _archive_for_force(target)
+    target.mkdir(parents=True, exist_ok=True)
+
+    if actual_device == "cpu":
+        warnings.warn("ASR đang fallback CPU; Whisper medium có thể chạy rất chậm", RuntimeWarning)
     progress_path = target / "progress.json"
     progress_contract = {
         "schema_version": 1,
@@ -251,7 +317,7 @@ def run_asr_shard(
     failed_ids = {row.get("video_id") for row in error_rows}
     if None in completed_ids or None in failed_ids or completed_ids & failed_ids:
         raise AsrContractError("Partial ASR có video_id thiếu/trùng giữa success và error")
-    item_ids = {item["video_id"] for item in shard["items"]}
+    item_ids = {item["video_id"] for item in selected_items}
     if not (completed_ids | failed_ids).issubset(item_ids):
         raise AsrContractError("Partial ASR chứa video ngoài shard")
     # Trim a crash-truncated final line and discard orphan segments written
@@ -271,7 +337,7 @@ def run_asr_shard(
     backend_version = getattr(transcriber, "backend_version", "unknown")
     started_at = progress.get("started_at") or _utc_now()
     root = Path(data_root)
-    for item in shard["items"]:
+    for item in selected_items:
         video_id = item["video_id"]
         if video_id in completed_ids or video_id in failed_ids:
             continue
@@ -381,7 +447,8 @@ def run_asr_shard(
         "language": language,
         "device": actual_device,
         "compute_type": actual_compute,
-        "expected_videos": len(shard["items"]),
+        "limit_videos": limit_videos,
+        "expected_videos": len(selected_items),
         "processed_videos": len(video_rows),
         "failed_videos": len(error_rows),
         "segment_count": len(segment_rows),

@@ -7,6 +7,7 @@ import pytest
 
 import aic2026.asr.whisper_runner as whisper_runner
 from aic2026.asr.merge import merge_asr_shards
+from aic2026.asr.manifest import AsrContractError
 from aic2026.asr.whisper_runner import AsrDependencyError, run_asr_shard, validate_asr_shard_artifact
 
 
@@ -24,6 +25,13 @@ class _FakeTranscriber:
             "no_speech_prob": 0.01,
             "compression_ratio": 1.0,
         }], {"duration": 2.0, "language": "vi", "language_probability": 0.99})
+
+
+class _BadDurationTranscriber(_FakeTranscriber):
+    def transcribe(self, video_path: Path, **kwargs):
+        segments, info = super().transcribe(video_path, **kwargs)
+        info["duration"] = 0.1
+        return segments, info
 
 
 def _write_shard(path: Path, video_ids: list[str], *, shard_id: str = "shard_000_of_001") -> None:
@@ -130,6 +138,49 @@ def test_failed_video_does_not_leave_orphan_segments(tmp_path: Path, monkeypatch
     assert marker["failed_videos"] == 1
     assert marker["segment_count"] == 0
     assert (tmp_path / "artifact" / "asr_segments.jsonl").read_text(encoding="utf-8") == ""
+
+
+def test_limit_videos_creates_separate_config_and_count(tmp_path: Path) -> None:
+    data_root = tmp_path / "data"
+    (data_root / "video").mkdir(parents=True)
+    for video_id in ("V1", "V3", "V4"):
+        (data_root / "video" / f"{video_id}.mp4").write_bytes(video_id.encode())
+    shard = tmp_path / "shard.json"
+    _write_shard(shard, ["V1", "V3", "V4"])
+    output = tmp_path / "smoke-artifact"
+
+    with pytest.warns(RuntimeWarning):
+        marker = run_asr_shard(
+            shard, data_root, output, device="cpu", limit_videos=2,
+            transcriber_factory=lambda *_: _FakeTranscriber(),
+        )
+    assert marker["limit_videos"] == 2
+    assert marker["expected_videos"] == 2
+    assert marker["processed_videos"] == 2
+
+    with pytest.raises(AsrContractError, match="shard/config khác"):
+        run_asr_shard(
+            shard, data_root, output, device="cpu",
+            transcriber_factory=lambda *_: _FakeTranscriber(),
+        )
+
+
+def test_validator_rejects_segment_beyond_video_duration(tmp_path: Path) -> None:
+    data_root = tmp_path / "data"
+    (data_root / "video").mkdir(parents=True)
+    (data_root / "video" / "V1.mp4").write_bytes(b"one")
+    shard = tmp_path / "shard.json"
+    _write_shard(shard, ["V1"])
+    output = tmp_path / "artifact"
+
+    with pytest.warns(RuntimeWarning), pytest.raises(AsrContractError, match="vượt duration"):
+        run_asr_shard(
+            shard, data_root, output, device="cpu",
+            transcriber_factory=lambda *_: _BadDurationTranscriber(),
+        )
+    valid, errors, _ = validate_asr_shard_artifact(output)
+    assert valid is False
+    assert any("vượt duration" in error for error in errors)
 
 
 def test_merge_validated_asr_shard(tmp_path: Path) -> None:

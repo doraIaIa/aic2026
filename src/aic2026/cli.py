@@ -37,8 +37,13 @@ from aic2026.evaluation.runner import (
 from aic2026.asr.fts import build_asr_fts, search_asr
 from aic2026.asr.manifest import AsrContractError, build_asr_pilot_manifest
 from aic2026.asr.merge import merge_asr_shards
+from aic2026.asr.review import export_asr_candidate_review
 from aic2026.asr.shard import split_asr_shards
-from aic2026.asr.whisper_runner import AsrDependencyError, run_asr_shard
+from aic2026.asr.whisper_runner import (
+    AsrDependencyError,
+    run_asr_shard,
+    validate_asr_shard_artifact,
+)
 
 
 def _json_print(value) -> None:
@@ -351,6 +356,7 @@ def cmd_run_asr_shard(args: argparse.Namespace) -> int:
             word_timestamps=args.word_timestamps,
             device=args.device,
             compute_type=args.compute_type,
+            limit_videos=args.limit_videos,
             force=args.force,
         )
     except (AsrContractError, AsrDependencyError, OSError) as exc:
@@ -358,6 +364,19 @@ def cmd_run_asr_shard(args: argparse.Namespace) -> int:
         return 2
     _json_print(marker)
     return 0
+
+
+def cmd_validate_asr_shard(args: argparse.Namespace) -> int:
+    try:
+        valid, errors, marker = validate_asr_shard_artifact(
+            args.artifact_dir,
+            duration_tolerance_sec=args.duration_tolerance_sec,
+        )
+    except (AsrContractError, OSError) as exc:
+        _json_print({"valid": False, "errors": [str(exc)], "marker": None})
+        return 3
+    _json_print({"valid": valid, "errors": errors, "marker": marker})
+    return 0 if valid else 3
 
 
 def cmd_merge_asr_shards(args: argparse.Namespace) -> int:
@@ -387,6 +406,22 @@ def cmd_search_asr(args: argparse.Namespace) -> int:
         _json_print({"status": "REJECTED", "error": str(exc)})
         return 2
     _json_print(results)
+    return 0
+
+
+def cmd_export_asr_candidates(args: argparse.Namespace) -> int:
+    try:
+        marker = export_asr_candidate_review(
+            args.dataset,
+            args.index,
+            args.out,
+            top_k=args.top_k,
+            metadata_path=args.metadata,
+        )
+    except (AsrContractError, EvalContractError, OSError) as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+    _json_print(marker)
     return 0
 
 
@@ -542,8 +577,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--word-timestamps", action=argparse.BooleanOptionalAction, default=False)
     p.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     p.add_argument("--compute-type", help="mặc định cuda=float16, cpu=int8")
+    p.add_argument("--limit-videos", type=int, help="smoke-only: chỉ xử lý N video đầu của shard")
     p.add_argument("--force", action="store_true", help="archive artifact cũ rồi chạy version mới")
     p.set_defaults(func=cmd_run_asr_shard)
+
+    p = sub.add_parser("validate-asr-shard", help="validate DONE/checksum/count/timestamp của ASR shard")
+    p.add_argument("--artifact-dir", required=True)
+    p.add_argument("--duration-tolerance-sec", type=float, default=1.0)
+    p.set_defaults(func=cmd_validate_asr_shard)
 
     p = sub.add_parser("merge-asr-shards", help="validate và merge immutable ASR shard artifacts")
     p.add_argument("--shards-dir", required=True)
@@ -560,6 +601,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--query", required=True)
     p.add_argument("--top-k", type=int, default=20)
     p.set_defaults(func=cmd_search_asr)
+
+    p = sub.add_parser("export-asr-candidates", help="xuất ASR-only review CSV cho eval queries")
+    p.add_argument("--dataset", required=True, help="evaluation dataset JSON")
+    p.add_argument("--index", required=True, help="ASR FTS artifact directory")
+    p.add_argument("--out", required=True, help="review artifact directory mới")
+    p.add_argument("--top-k", type=int, default=20)
+    p.add_argument("--metadata", help="M1 metadata JSONL để map nearest verified keyframe")
+    p.set_defaults(func=cmd_export_asr_candidates)
 
     return parser
 

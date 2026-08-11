@@ -1,73 +1,124 @@
-# ASR Whisper medium worker (Colab/Kaggle)
+# ASR Whisper medium pilot — 2 worker Colab/Kaggle
 
-M2-ASR hiện chỉ là pilot trên 95 video lấy từ Group A top candidates. Worker chỉ đọc video và ghi artifact bất biến; không sửa raw BTC data hoặc production SQLite.
+Pilot gồm 95 video lấy từ Group A candidates và chỉ dùng hai worker hợp lệ:
 
-## 1. Chuẩn bị worker
+- Colab: `shard_000_of_002.json` — 48 video;
+- Kaggle: `shard_001_of_002.json` — 47 video.
 
-Copy repository và đúng một shard manifest lên runtime. Mount/copy BTC corpus sao cho `data_root` chứa các path tương đối như `data_extracted/video/L21_V011.mp4`. Tạo config từ `configs/colab.example.toml` hoặc `configs/kaggle.example.toml`; không commit token hay đường dẫn chứa secret.
+Worker chỉ đọc BTC video và ghi artifact bất biến. Không sửa raw data, không ghi production SQLite và không dùng nhiều tài khoản để né quota.
 
-```bash
-python -m pip install -e '.[asr]'
-python -m aic2026.cli doctor --config configs/colab.toml
+## 1. Đưa input lên worker
+
+Mỗi worker cần:
+
+1. repository tại `/content/aic2026` (Colab) hoặc `/kaggle/working/aic2026` (Kaggle);
+2. đúng một shard JSON từ `F:\AIC_WORK\asr\shards\group-a-candidate-pilot-v1-2workers`;
+3. BTC root có layout tương đối như `data_extracted/video/L21_V011.mp4`;
+4. Internet hoặc model cache hợp lệ để cài `faster-whisper` và lấy model `medium`.
+
+Colab có thể mount Google Drive. Kaggle nên attach BTC/model/shard dưới `/kaggle/input` và ghi output dưới `/kaggle/working`. Không đưa token hoặc secret vào notebook/config.
+
+Notebook runnable: `notebooks/asr_whisper_medium_worker.ipynb`. Chọn:
+
+```python
+WORKER = "colab"   # Colab; tự dùng SHARD_INDEX=0
+WORKER = "kaggle"  # Kaggle; tự dùng SHARD_INDEX=1
+NUM_SHARDS = 2
 ```
 
-Kaggle dùng config riêng, ví dụ `configs/kaggle.toml`. Chỉ dùng worker hợp lệ của cá nhân/nhóm và tuân thủ quota/nội quy dữ liệu.
+## 2. Cài dependency và tạo runtime config
 
-## 2. Chạy một shard
+```bash
+cd /content/aic2026  # Kaggle: /kaggle/working/aic2026
+python -m pip install -e '.[asr]'
+python -m aic2026.cli doctor --config /content/aic-runtime.toml
+```
+
+Runtime TOML phải đặt `data_root` đúng BTC root của worker. Absolute path chỉ nằm trong runtime config; manifest/artifact tiếp tục lưu relative source paths.
+
+## 3. Smoke 5 video trước
+
+Luôn dùng output riêng, không dùng thư mục full-shard:
 
 ```bash
 python -m aic2026.cli run-asr-shard \
-  --config configs/colab.toml \
-  --shard /content/shards/shard_000_of_004.json \
-  --out-dir /content/asr-output/shard_000_of_004 \
-  --model medium \
-  --model-revision medium \
-  --language vi \
-  --device auto
+  --config /content/aic-runtime.toml \
+  --shard /content/shards/shard_000_of_002.json \
+  --out-dir /content/asr-output/smoke_shard_000_of_002_limit5 \
+  --model medium --model-revision medium --language vi \
+  --beam-size 5 --vad-filter --device auto --limit-videos 5
+
+python -m aic2026.cli validate-asr-shard \
+  --artifact-dir /content/asr-output/smoke_shard_000_of_002_limit5
 ```
 
-Mặc định là `beam_size=5`, VAD bật, word timestamps tắt; CUDA dùng `float16`, CPU dùng `int8`. Chạy lại đúng lệnh để resume. Artifact hoàn tất có `DONE.json` và `checksum.sha256`; không dùng `--force` trừ khi chủ động archive artifact cũ và tạo lại.
+Kaggle thay path bằng `/kaggle/...` và shard `001`. Chỉ chạy full shard khi smoke có `DONE.json`, checksum hợp lệ, transcript/timestamp đọc được và lỗi không có tính hệ thống.
 
-## 3. Thu artifact về local
+## 4. Chạy/resume full shard
 
-Zip/download nguyên thư mục shard, gồm:
+Colab:
 
-```text
-asr_segments.jsonl
-asr_videos.jsonl
-errors.jsonl
-progress.json
-DONE.json
-checksum.sha256
+```bash
+python -m aic2026.cli run-asr-shard \
+  --config /content/aic-runtime.toml \
+  --shard /content/shards/shard_000_of_002.json \
+  --out-dir /content/asr-output/shard_000_of_002 \
+  --model medium --model-revision medium --language vi \
+  --beam-size 5 --vad-filter --device auto
 ```
 
-Đặt bốn thư mục tại:
+Kaggle:
+
+```bash
+python -m aic2026.cli run-asr-shard \
+  --config /kaggle/working/aic-runtime.toml \
+  --shard /kaggle/input/aic-asr-shards/shard_001_of_002.json \
+  --out-dir /kaggle/working/asr-output/shard_001_of_002 \
+  --model medium --model-revision medium --language vi \
+  --beam-size 5 --vad-filter --device auto
+```
+
+Mặc định word timestamps tắt; CUDA dùng `float16`, CPU dùng `int8`. Chạy lại đúng command để resume. Không dùng `--force` trừ khi chủ động archive artifact cũ.
+
+## 5. Validate và tải artifact về local
+
+```bash
+python -m aic2026.cli validate-asr-shard --artifact-dir <full-shard-output>
+```
+
+Zip bằng notebook `shutil.make_archive`, rồi download nguyên artifact gồm `asr_segments.jsonl`, `asr_videos.jsonl`, `errors.jsonl`, `progress.json`, `DONE.json`, `checksum.sha256` và partial files phục vụ forensic/resume.
+
+Giải nén về:
 
 ```text
 F:\AIC_WORK\artifacts\asr\whisper-medium-vi-pilot-v1\
-  shard_000_of_004\
-  shard_001_of_004\
-  shard_002_of_004\
-  shard_003_of_004\
+  shard_000_of_002\
+  shard_001_of_002\
 ```
 
-## 4. Validate, merge và build FTS tại local
+## 6. Merge và build FTS tại local
 
-`merge-asr-shards` kiểm tra DONE/checksum/count của từng shard trước khi nhập:
+Chỉ chạy khi cả hai shard validate thành công:
 
 ```powershell
 python -m aic2026.cli merge-asr-shards `
   --shards-dir F:\AIC_WORK\artifacts\asr\whisper-medium-vi-pilot-v1 `
-  --out-dir F:\AIC_WORK\artifacts\asr\whisper-medium-vi-pilot-merged-v1
+  --out-dir F:\AIC_WORK\artifacts\asr\whisper-medium-vi-pilot-v1-merged
 
 python -m aic2026.cli build-asr-fts `
-  --segments F:\AIC_WORK\artifacts\asr\whisper-medium-vi-pilot-merged-v1\asr_segments.jsonl `
-  --out F:\AIC_WORK\artifacts\asr\whisper-medium-vi-pilot-fts-v1
+  --segments F:\AIC_WORK\artifacts\asr\whisper-medium-vi-pilot-v1-merged\asr_segments.jsonl `
+  --out F:\AIC_WORK\artifacts\asr\whisper-medium-vi-pilot-v1-fts
 
-python -m aic2026.cli search-asr `
-  --index F:\AIC_WORK\artifacts\asr\whisper-medium-vi-pilot-fts-v1 `
-  --query "thành phố Hồ Chí Minh" `
+python -m aic2026.cli export-asr-candidates `
+  --dataset F:\AIC_WORK\evaluation\group-a-unlabeled-v1.json `
+  --index F:\AIC_WORK\artifacts\asr\whisper-medium-vi-pilot-v1-fts `
+  --metadata F:\AIC_WORK\artifacts\m1\clip-faiss-btc-v1\metadata.jsonl `
+  --out F:\AIC_WORK\artifacts\asr\whisper-medium-vi-pilot-v1-review `
   --top-k 20
 ```
 
-ASR `start_sec/end_sec` chỉ là temporal anchor, không phải frame ID để nộp. Exact frame vẫn phải đi qua mapping BTC đã xác minh và source video.
+Có thể bỏ `--metadata` để các cột nearest keyframe để trống. ASR `start_sec/end_sec` chỉ là temporal anchor, không phải submission frame ID.
+
+## 7. GO/NO-GO
+
+GO chỉ khi ít nhất 90% video thành công, timestamp hợp lệ, transcript tiếng Việt đọc được ở phần lớn video có lời nói, FTS/search hoạt động và một số query tên riêng/thời sự/lời dẫn trả segment liên quan. NO-GO hoặc chỉnh pipeline nếu transcript rỗng hàng loạt, timestamp lệch, lỗi format/audio tập trung hoặc model medium cho tiếng Việt quá kém. Chưa mở full 873 video trước quyết định này.
