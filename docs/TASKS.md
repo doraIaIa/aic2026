@@ -5,9 +5,10 @@
 - checkpoint/resume validation
 - keyframe/CSV/CLIP mapping contract fix
 - 20-video real-data mapping validation
+- M1 baseline BTC CLIP + FAISS
 
 ## NEXT
-- M1 BTC CLIP + FAISS baseline
+- Định nghĩa và phê duyệt milestone tiếp theo trước khi triển khai
 
 ## NOT YET
 - OCR

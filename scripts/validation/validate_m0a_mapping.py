@@ -14,6 +14,10 @@ except ImportError:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+def validation_verdict(video_count: int, fail_count: int) -> str:
+    return "PASS" if video_count > 0 and fail_count == 0 else "FAIL"
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/local.toml")
@@ -83,6 +87,8 @@ def main():
                 break
                 
     logger.info(f"Selected videos: {selected_videos}")
+    if not selected_videos:
+        logger.error("Không tìm thấy video hợp lệ để xác thực; M0 phải fail-closed.")
     
     results = []
     pass_count = 0
@@ -223,7 +229,7 @@ COMMIT TESTED: {commit_sha}
 ENVIRONMENT: {env_info}
 
 ## VERDICT
-{"PASS" if fail_count == 0 else "FAIL"}
+{validation_verdict(len(selected_videos), fail_count)}
 
 ## SUMMARY
 VIDEOS TESTED: {len(selected_videos)}
@@ -250,6 +256,7 @@ ANOMALIES: {anomalies}
         f.write(report_content)
         
     logger.info(f"Report generated at {out_report}")
+    return 0 if validation_verdict(len(selected_videos), fail_count) == "PASS" else 2
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

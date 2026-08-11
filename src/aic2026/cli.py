@@ -20,6 +20,12 @@ from aic2026.audit.modalities import run_modalities
 from aic2026.audit.mapping import run_frame_mapping
 from aic2026.audit.clip import run_clip
 from aic2026.audit.report import generate_reports
+from aic2026.retrieval.clip_faiss import (
+    build_clip_index,
+    encode_clip_text,
+    search_clip_index,
+    write_clip_manifest,
+)
 
 
 def _json_print(value) -> None:
@@ -162,6 +168,51 @@ def cmd_audit_report(args: argparse.Namespace) -> int:
     generate_reports(audit_dir)
     return 0
 
+
+def cmd_build_clip_index(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    resolver = PathResolver.from_config(config)
+    marker = build_clip_index(
+        resolver.data_root,
+        args.manifest,
+        args.out,
+        model_name=args.model_name,
+        model_revision=args.model_revision,
+        config_hash=args.config_hash,
+        git_commit=args.git_commit,
+    )
+    _json_print(marker)
+    return 0
+
+
+def cmd_build_clip_manifest(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    resolver = PathResolver.from_config(config)
+    count = write_clip_manifest(resolver.data_root, args.out)
+    _json_print({"manifest": args.out, "videos": count})
+    return 0
+
+
+def cmd_search_clip_index(args: argparse.Namespace) -> int:
+    import numpy as np
+
+    query = np.load(args.query_vector)
+    results = search_clip_index(args.index, query, args.top_k)
+    _json_print([{"embedding_id": item_id, "score": score} for item_id, score in results])
+    return 0
+
+
+def cmd_search_clip_text(args: argparse.Namespace) -> int:
+    query = encode_clip_text(
+        args.query,
+        model_name=args.model_name,
+        pretrained=args.pretrained,
+        device=args.device,
+    )
+    results = search_clip_index(args.index, query, args.top_k)
+    _json_print([{"embedding_id": item_id, "score": score} for item_id, score in results])
+    return 0
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aic", description="AIC 2026 reliability/control-plane CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -219,10 +270,44 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--audit-dir", required=True)
     p.set_defaults(func=cmd_audit_report)
 
+    p = sub.add_parser("build-clip-manifest", help="tạo manifest CLIP từ layout canonical đã khóa")
+    p.add_argument("--config", required=True)
+    p.add_argument("--out", required=True)
+    p.set_defaults(func=cmd_build_clip_manifest)
+
+    p = sub.add_parser("build-clip-index", help="xây CLIP FAISS index từ manifest đã xác thực")
+    p.add_argument("--config", required=True)
+    p.add_argument("--manifest", required=True)
+    p.add_argument("--out", required=True)
+    p.add_argument("--model-name", required=True)
+    p.add_argument("--model-revision", required=True)
+    p.add_argument("--config-hash", required=True)
+    p.add_argument("--git-commit")
+    p.set_defaults(func=cmd_build_clip_index)
+
+    p = sub.add_parser("search-clip-index", help="truy vấn FAISS bằng vector CLIP tương thích")
+    p.add_argument("--index", required=True)
+    p.add_argument("--query-vector", required=True)
+    p.add_argument("--top-k", type=int, default=20)
+    p.set_defaults(func=cmd_search_clip_index)
+
+    p = sub.add_parser("search-clip-text", help="truy vấn text bằng OpenCLIP ViT-B-32")
+    p.add_argument("--index", required=True)
+    p.add_argument("--query", required=True)
+    p.add_argument("--top-k", type=int, default=20)
+    p.add_argument("--model-name", default="ViT-B-32")
+    p.add_argument("--pretrained", default="openai")
+    p.add_argument("--device", default="cpu")
+    p.set_defaults(func=cmd_search_clip_text)
+
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
     parser = build_parser()
     args = parser.parse_args(argv)
     return int(args.func(args))

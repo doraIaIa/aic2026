@@ -1,14 +1,15 @@
 # Project State
 
-**Current Phase:** M0 closing / M1 ready
+**Current Phase:** M1 hoàn tất / milestone tiếp theo đang chờ phê duyệt
 
 ## What is done
 - M0 reliability scaffold (checkpointing/resume validation).
 - Keyframe/CSV/CLIP mapping contract fix.
 - 20-video real-data mapping validation.
+- M1 nạp CLIP + baseline FAISS: 177.321 vector, dimension 512.
+- Truy hồi text-to-keyframe dùng OpenCLIP `ViT-B-32`, pretrained `openai`, đúng theo notebook baseline BTC.
 
 ## What is not done
-- M1 (CLIP ingestion + FAISS baseline).
 - OCR, ASR, SigLIP, Objects extraction.
 - TRAKE retrieval logic.
 - Application UI.
@@ -30,7 +31,7 @@
 - The dataset scale is significant, and I/O latency to Google Drive is high. Any full traversal requires caching or batched logic.
 
 ## Next Phase
-- **M1 CLIP + FAISS only**
+- Chưa được đặc tả. Phải phê duyệt milestone tiếp theo trước khi triển khai.
 
 > [!CAUTION]
-> **EXPLICIT INSTRUCTION:** Do NOT start OCR, ASR, SigLIP, or Objects extraction yet. M1 is purely CLIP + FAISS.
+> **CHỈ THỊ RÕ RÀNG:** Chưa bắt đầu OCR, ASR, SigLIP hoặc Objects cho đến khi milestone tiếp theo được phê duyệt.
