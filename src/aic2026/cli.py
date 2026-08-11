@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from aic2026.core.config import load_config
-from aic2026.core.paths import PathResolver
+from aic2026.core.paths import PathContractError, PathResolver
 from aic2026.jobs.artifact import validate_artifact
 from aic2026.jobs.handlers import get_handler
 from aic2026.jobs.manifest import build_shards, write_jsonl_manifest
@@ -34,6 +34,11 @@ from aic2026.evaluation.runner import (
     run_baseline_evaluation,
     validate_eval_run_artifact,
 )
+from aic2026.asr.fts import build_asr_fts, search_asr
+from aic2026.asr.manifest import AsrContractError, build_asr_pilot_manifest
+from aic2026.asr.merge import merge_asr_shards
+from aic2026.asr.shard import split_asr_shards
+from aic2026.asr.whisper_runner import AsrDependencyError, run_asr_shard
 
 
 def _json_print(value) -> None:
@@ -299,6 +304,92 @@ def cmd_export_eval_candidates(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_build_asr_pilot_manifest(args: argparse.Namespace) -> int:
+    try:
+        resolver = PathResolver.from_config(load_config(args.config))
+        inventory = args.video_inventory or resolver.work("audit/videos.jsonl")
+        summary = build_asr_pilot_manifest(
+            args.candidate_review,
+            inventory,
+            args.out,
+            data_root=resolver.data_root,
+            min_videos=args.min_videos,
+            max_videos=args.max_videos,
+            primary_rank=args.primary_rank,
+            expanded_rank=args.expanded_rank,
+        )
+    except (AsrContractError, OSError, PathContractError) as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+    _json_print(summary)
+    return 0
+
+
+def cmd_split_asr_shards(args: argparse.Namespace) -> int:
+    try:
+        outputs = split_asr_shards(args.manifest, args.out_dir, num_shards=args.num_shards)
+    except (AsrContractError, OSError) as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+    _json_print({"shard_count": len(outputs), "shards": [str(path) for path in outputs]})
+    return 0
+
+
+def cmd_run_asr_shard(args: argparse.Namespace) -> int:
+    try:
+        resolver = PathResolver.from_config(load_config(args.config))
+        marker = run_asr_shard(
+            args.shard,
+            resolver.data_root,
+            args.out_dir,
+            model_size=args.model,
+            model_revision=args.model_revision,
+            language=args.language,
+            task=args.task,
+            beam_size=args.beam_size,
+            vad_filter=args.vad_filter,
+            word_timestamps=args.word_timestamps,
+            device=args.device,
+            compute_type=args.compute_type,
+            force=args.force,
+        )
+    except (AsrContractError, AsrDependencyError, OSError) as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+    _json_print(marker)
+    return 0
+
+
+def cmd_merge_asr_shards(args: argparse.Namespace) -> int:
+    try:
+        marker = merge_asr_shards(args.shards_dir, args.out_dir)
+    except (AsrContractError, OSError) as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+    _json_print(marker)
+    return 0
+
+
+def cmd_build_asr_fts(args: argparse.Namespace) -> int:
+    try:
+        summary = build_asr_fts(args.segments, args.out)
+    except (AsrContractError, OSError) as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+    _json_print(summary)
+    return 0
+
+
+def cmd_search_asr(args: argparse.Namespace) -> int:
+    try:
+        results = search_asr(args.index, args.query, top_k=args.top_k)
+    except (AsrContractError, OSError) as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+    _json_print(results)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aic", description="AIC 2026 reliability/control-plane CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -420,6 +511,55 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--run-dir", required=True)
     p.add_argument("--out", required=True, help="thư mục artifact mới; không ghi đè artifact hoàn tất")
     p.set_defaults(func=cmd_export_eval_candidates)
+
+    p = sub.add_parser("build-asr-pilot-manifest", help="tạo ASR pilot manifest từ Group A candidates")
+    p.add_argument("--config", required=True, help="config chứa data_root/work_root")
+    p.add_argument("--candidate-review", required=True, help="candidate_review.csv đã validate")
+    p.add_argument("--video-inventory", help="videos.jsonl; mặc định <work_root>/audit/videos.jsonl")
+    p.add_argument("--out", required=True, help="ASR pilot manifest JSONL mới")
+    p.add_argument("--min-videos", type=int, default=100)
+    p.add_argument("--max-videos", type=int, default=250)
+    p.add_argument("--primary-rank", type=int, default=10)
+    p.add_argument("--expanded-rank", type=int, default=20)
+    p.set_defaults(func=cmd_build_asr_pilot_manifest)
+
+    p = sub.add_parser("split-asr-shards", help="chia ASR manifest thành shard portable")
+    p.add_argument("--manifest", required=True)
+    p.add_argument("--num-shards", type=int, required=True)
+    p.add_argument("--out-dir", required=True)
+    p.set_defaults(func=cmd_split_asr_shards)
+
+    p = sub.add_parser("run-asr-shard", help="chạy/resume faster-whisper trên một ASR shard")
+    p.add_argument("--config", required=True, help="config local/Colab/Kaggle chứa data_root")
+    p.add_argument("--shard", required=True)
+    p.add_argument("--out-dir", required=True, help="artifact directory riêng cho shard")
+    p.add_argument("--model", default="medium")
+    p.add_argument("--model-revision", default="medium")
+    p.add_argument("--language", default="vi")
+    p.add_argument("--task", default="transcribe", choices=("transcribe", "translate"))
+    p.add_argument("--beam-size", type=int, default=5)
+    p.add_argument("--vad-filter", action=argparse.BooleanOptionalAction, default=True)
+    p.add_argument("--word-timestamps", action=argparse.BooleanOptionalAction, default=False)
+    p.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    p.add_argument("--compute-type", help="mặc định cuda=float16, cpu=int8")
+    p.add_argument("--force", action="store_true", help="archive artifact cũ rồi chạy version mới")
+    p.set_defaults(func=cmd_run_asr_shard)
+
+    p = sub.add_parser("merge-asr-shards", help="validate và merge immutable ASR shard artifacts")
+    p.add_argument("--shards-dir", required=True)
+    p.add_argument("--out-dir", required=True)
+    p.set_defaults(func=cmd_merge_asr_shards)
+
+    p = sub.add_parser("build-asr-fts", help="xây SQLite FTS5 từ ASR segments")
+    p.add_argument("--segments", required=True)
+    p.add_argument("--out", required=True, help="artifact directory mới chứa SQLite index + DONE/checksum")
+    p.set_defaults(func=cmd_build_asr_fts)
+
+    p = sub.add_parser("search-asr", help="tìm ASR segments độc lập bằng BM25")
+    p.add_argument("--index", required=True)
+    p.add_argument("--query", required=True)
+    p.add_argument("--top-k", type=int, default=20)
+    p.set_defaults(func=cmd_search_asr)
 
     return parser
 

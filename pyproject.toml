@@ -17,6 +17,7 @@ ml = [
   "open-clip-torch>=2.26,<4",
   "pillow>=10,<12",
 ]
+asr = ["faster-whisper>=1.0,<2"]
 
 [project.scripts]
 aic = "aic2026.cli:main"

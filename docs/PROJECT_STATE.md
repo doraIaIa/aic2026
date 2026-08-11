@@ -1,6 +1,6 @@
 # Project State
 
-**Current Phase:** Evaluation Closure PARTIAL / metric chất lượng bị chặn bởi ground truth
+**Current Phase:** M2-ASR PILOT / Evaluation metric vẫn bị chặn bởi ground truth
 
 ## What is done
 - M0 reliability scaffold (checkpointing/resume validation).
@@ -13,12 +13,15 @@
 - Đã import 35 Group A query text: 29 KIS, 4 QA, 2 TRAKE; tất cả là `unlabeled_reference`.
 - Group A baseline top-100: 35/35 query thành công, 3.500 predictions, p50 291,66 ms, p95 377,56 ms.
 - Candidate review artifact và failure sheet đã sẵn sàng tại `F:\AIC_WORK\artifacts\evaluation\group-a-review-v1`.
+- M2-ASR pilot pipeline đã sẵn sàng: faster-whisper `medium`, tiếng Việt, resume/checksum/DONE, merge và SQLite FTS5.
+- Group A ASR pilot manifest có 95 video unique từ top-20 candidates; 4 shard có 24/24/24/23 video.
 
 ## What is not done
 - Gắn ground truth có provenance cho 35 query Group A và phân loại trap category.
 - DEV/HOLDOUT Recall@1/5/20/50/100 và failure analysis.
 - QA/TRAKE scorer chính thức do chưa có scoring contract.
-- OCR, ASR, SigLIP, Objects extraction.
+- Chạy 4 ASR pilot shard trên GPU và thẩm định transcript/retrieval usefulness.
+- ASR full corpus; OCR, SigLIP và Objects extraction.
 - TRAKE retrieval logic.
 - Application UI.
 
@@ -39,7 +42,8 @@
 - The dataset scale is significant, and I/O latency to Google Drive is high. Any full traversal requires caching or batched logic.
 
 ## Next Phase
-- Thẩm định candidate review, gắn ground truth có provenance, tạo DEV/HOLDOUT rồi tính Recall@K thật.
+- Chạy ASR pilot shard trên Colab/Kaggle hợp lệ, merge transcript, build FTS và thẩm định usefulness.
+- Song song: gắn ground truth có provenance để đo CLIP-only và +ASR khi dữ liệu nhãn sẵn sàng.
 
 > [!CAUTION]
-> **CHỈ THỊ RÕ RÀNG:** Chưa bắt đầu OCR, ASR, SigLIP hoặc Objects cho đến khi milestone tiếp theo được phê duyệt.
+> **M2 scope:** Chỉ ASR pilot đã được mở. Chưa bắt đầu OCR, SigLIP, Objects, TRAKE production hoặc UI.

@@ -65,10 +65,11 @@ Re-run the same command. Completed item IDs are skipped and the finalized artifa
 - versioned evaluation contract và validator
 - KIS Recall@1/5/20/50/100 scorer
 - CLIP-only evaluation runner với predictions, latency, provenance và checksum
+- M2-ASR pilot: Group A candidate manifest/shards, faster-whisper runner, merge và SQLite FTS5
 
 ## What is deliberately NOT implemented yet
 
-- Whisper, PaddleOCR, SigLIP2 handlers
+- ASR full-corpus production, PaddleOCR và SigLIP2 handlers
 - QA/TRAKE scorer chính thức và UI
 
 Those should be implemented only after the dataset/path/frame mapping contract is verified on the actual corpus. See `docs/IMPLEMENTATION_SPEC.md` and `ANTIGRAVITY_BOOTSTRAP_PROMPT.md`.
