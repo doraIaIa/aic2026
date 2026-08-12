@@ -1,0 +1,1 @@
+{"contract_version":"retrieval.v1","request_id":"fixture-trake","mode":"TRAKE","query_text":"người dẫn giới thiệu rồi chuyển sang hiện trường","mode_context":{"event_texts":["người dẫn giới thiệu","cảnh hiện trường"]},"routing":{"strategy":"auto","enabled_lanes":["visual","asr"],"object_match":"soft"},"filters":{"video_ids":[],"start_sec":null,"end_sec":null},"result_limit":20}

@@ -26,4 +26,8 @@ aic = "aic2026.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-aic2026 = ["db/*.sql"]
+aic2026 = [
+  "db/*.sql",
+  "retrieval/contracts/v1/*.json",
+  "retrieval/contracts/v1/fixtures/*.json",
+]

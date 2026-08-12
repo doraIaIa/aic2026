@@ -1,0 +1,1 @@
+{"contract_version":"retrieval.v1","request_id":"fixture-kis","mode":"KIS","query_text":"một người đi xe đạp","mode_context":{},"routing":{"strategy":"auto","enabled_lanes":["visual","asr"],"object_match":"soft"},"filters":{"video_ids":[],"start_sec":null,"end_sec":null},"result_limit":20}

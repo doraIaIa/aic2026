@@ -1,6 +1,6 @@
 # Project State
 
-**Current Phase:** M2-ASR SEARCH MVP / Evaluation metric vẫn bị chặn bởi ground truth
+**Current Phase:** UNIFIED RETRIEVAL PHASE 0 / Evaluation metric vẫn bị chặn bởi ground truth
 
 ## What is done
 - M0 reliability scaffold (checkpointing/resume validation).
@@ -18,7 +18,9 @@
 - Full-corpus ASR đã merge đủ 873 video / 107.540 segments; SQLite FTS5 search index tại `F:\AIC_WORK\db\aic.sqlite` đã PASS integrity/count/smoke tests.
 - CLI ASR search hỗ trợ BM25, phrase query, `video_id` filter, JSON output và tìm tiếng Việt không dấu qua `unicode61 remove_diacritics 2`.
 - Local read-only ASR HTTP API đã nối trực tiếp với search core; demo React/Vite riêng đã dùng API thật tại `http://localhost:3000`.
-- UI ASR MVP có query, limit, optional `video_id`, result/timecode/segment, copy action và loading/empty/error states.
+- ASR route hiện chỉ là diagnostic/smoke UI; không phải product architecture.
+- Unified retrieval contract/policy v1 đã khóa bằng JSON Schema, backend validation, fixtures và generated frontend type có checksum.
+- Demo frontend đã có local Git baseline; `/prototype` là product shell sẽ migrate sau khi backend provider/orchestrator hoàn tất.
 
 ## What is not done
 - Gắn ground truth có provenance cho 35 query Group A và phân loại trap category.
@@ -28,7 +30,8 @@
 - Video preview an toàn; môi trường hiện tại chưa mount `data_root` nên UI không giả lập playback.
 - OCR, SigLIP và Objects extraction.
 - TRAKE retrieval logic.
-- Multimodal application UI hoàn chỉnh; hiện mới có ASR-only search MVP.
+- Provider adapter Visual/ASR, temporal windowing, lane-collapse RRF và unified search endpoint.
+- Multimodal application UI hoàn chỉnh; chưa thay mock trong `/prototype`.
 
 ## Accepted dataset facts
 1. Canonical videos: 873.
@@ -47,8 +50,9 @@
 - The dataset scale is significant, and I/O latency to Google Drive is high. Any full traversal requires caching or batched logic.
 
 ## Next Phase
-- Dùng ASR CLI/UI trên query thật, review false positives/phrase behavior và đo usefulness trước fusion.
-- Song song: gắn ground truth có provenance để đo CLIP-only và +ASR khi dữ liệu nhãn sẵn sàng.
+- Phase 1: provider adapter Visual/ASR theo contract v1; OCR/Object báo `UNAVAILABLE`.
+- Phase 2: deterministic windowing và RRF collapse theo lane trước fusion.
+- Song song: gắn ground truth có provenance để đo CLIP-only, ASR-only và fusion trên DEV/HOLDOUT.
 
 > [!CAUTION]
-> **M2 scope:** ASR full-corpus search và ASR-only UI đã mở. Chưa bắt đầu OCR, SigLIP, Objects, TRAKE production hoặc multimodal fusion.
+> **Product direction:** Không phát triển thêm UI ASR riêng. ASR FTS5 là provider đã PASS. ASR/OCR không tự mở submit gate; frame phải có mapping visual/dense hợp lệ và operator xác nhận.

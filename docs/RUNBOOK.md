@@ -152,6 +152,9 @@ FTS dùng `unicode61 remove_diacritics 2`; tìm không dấu tiện hơn nhưng 
 
 ## Local ASR Search API và demo UI
 
+> [!IMPORTANT]
+> Đây chỉ là luồng diagnostic cho ASR provider. Không phát triển route ASR-only thành product UI. Contract sản phẩm chung xem tại `docs/RETRIEVAL_CONTRACT.md`; `/prototype` chỉ được thay mock sau khi Phase 1–2 backend hoàn tất.
+
 Khởi chạy API read-only từ repo chính; API reuse `aic2026.search.asr.search_asr`, không chứa SQL riêng và không copy database sang frontend:
 
 ```powershell

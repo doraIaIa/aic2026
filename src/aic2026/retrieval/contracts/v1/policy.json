@@ -1,0 +1,45 @@
+{
+  "contract_version": "retrieval.v1",
+  "policy_version": "retrieval-policy-v1",
+  "fts": {
+    "product_mode": "literal_all_tokens_with_quoted_phrases",
+    "raw_syntax_allowed": false,
+    "raw_syntax_scope": "diagnostic_cli_only"
+  },
+  "windowing": {
+    "visual_anchor": "pts_time",
+    "asr_anchor": "midpoint",
+    "ocr_anchor": "midpoint",
+    "same_video_only": true,
+    "merge_anchor_distance_sec": 4.0,
+    "max_window_span_sec": 12.0,
+    "prevent_transitive_chain_merge": true,
+    "representative_order": ["best_rank", "visual_on_tie", "earliest_anchor", "evidence_id"]
+  },
+  "fusion": {
+    "algorithm": "rrf",
+    "rrf_k": 60,
+    "lane_weights": {"visual": 1.0, "asr": 1.0, "ocr": 1.0, "object": 1.0},
+    "collapse_per_lane": "best_rank_per_evidence_window",
+    "deduplicate_by": "evidence_id",
+    "stable_tie_break": ["rrf_score_desc", "best_rank_asc", "video_id_asc", "start_sec_asc", "evidence_window_id_asc"]
+  },
+  "submission": {
+    "submit_valid_means": "mapping_and_provenance_valid_only",
+    "operator_frame_confirmation_required": true,
+    "temporal_anchor_can_submit": false,
+    "valid_representative_kinds": ["visual_keyframe", "dense_frame"]
+  },
+  "media": {
+    "environment_variable": "AIC_MEDIA_ROOT",
+    "config_key": "paths.data_root",
+    "backend_read_only": true,
+    "absolute_paths_in_response": false,
+    "unmounted_status": "MEDIA_UNAVAILABLE"
+  },
+  "optional_lanes": {
+    "failure_policy": "fail_open",
+    "integrity_failure_policy": "fail_closed_for_affected_lane",
+    "unavailable_results_must_be_empty": true
+  }
+}

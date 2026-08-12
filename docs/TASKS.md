@@ -15,12 +15,17 @@
 - Group A ASR pilot manifest: 95 video, 2 worker shard (48/47)
 - Full ASR search DB: 873 video, 107.540 segments, 107.540 FTS rows, 0 orphan/duplicate
 - CLI `python -m aic2026.search.asr` và atomic/idempotent index builder
-- Read-only ASR HTTP API và frontend React/Vite ASR-only tại `F:\aic-video-search-demo`
+- Read-only ASR HTTP API và diagnostic frontend tại `F:\aic-video-search-demo`
+- Phase 0: retrieval JSON Schema/policy v1, backend validator, fixtures và generated TypeScript checksum
+- Frontend local Git baseline commit; demo/product source tách khỏi node_modules/dist/media/cache
 
 ## NEXT
-- Review ASR-only search quality trên Group A queries
+- Provider adapters Visual/ASR và capability reporting cho OCR/Object unavailable
+- Deterministic EvidenceWindow clustering, max span 12 giây và per-lane collapsed RRF
+- Unified `POST /api/v1/search`; chưa tạo stateless evidence detail endpoint
+- Sau đó migrate `/prototype` một lần theo generated contract
 - Xác thực media mount rồi mới thêm video streaming/seek preview an toàn
-- Định nghĩa ablation CLIP-only so với CLIP+ASR sau khi có ground truth
+- Định nghĩa ablation CLIP-only, ASR-only và CLIP+ASR sau khi có ground truth
 - Thẩm định top candidates và gắn ground truth có provenance
 - Tách DEV/HOLDOUT rồi chạy baseline, báo Recall@K và failure analysis
 
@@ -33,4 +38,4 @@
 - Objects
 - SigLIP
 - TRAKE
-- UI
+- Product UI đa phương thức
