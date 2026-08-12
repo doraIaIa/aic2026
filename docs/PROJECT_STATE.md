@@ -1,6 +1,6 @@
 # Project State
 
-**Current Phase:** UNIFIED RETRIEVAL PHASE 0 / Evaluation metric vẫn bị chặn bởi ground truth
+**Current Phase:** PHASE 4 – MEDIA + EXACT-FRAME EVIDENCE INSPECTOR
 
 ## What is done
 - M0 reliability scaffold (checkpointing/resume validation).
@@ -25,16 +25,19 @@
 - Production capability smoke: ASR 873 video/107.540 segment/FTS rows; Visual 177.321 vector, dimension 512; checksum đúng marker. OCR/Object vẫn `UNAVAILABLE`; media hiện `MEDIA_UNAVAILABLE`.
 - Phase 2 unified orchestrator đã có auto/manual routing, bounded provider concurrency, deterministic EvidenceWindow, anti-chain windowing và per-lane collapsed RRF.
 - `POST /api/v1/search` đã chạy production smoke ASR-only, Visual-only và auto Visual+ASR. Đây là integrity/schema/latency smoke, không phải quality benchmark.
+- Phase 3: product UI đã migrate, mock đã loại bỏ hoàn toàn, `/` là SearchWorkspace thật, `/prototype` redirect. TypeScript PASS, 11/11 test PASS, build PASS. Commit: `251c0c3`.
+- Phase 4: Media module (`src/aic2026/media/`): resolver, api_handler, 4 endpoints mới (`/info`, `/stream`, `/frames/{id}`, `/resolve-frame`). Path traversal blocked. Absolute path không bao giờ ra ngoài. Media capability live. 3 video smoke: L21_V001/L25_V007/L30_V009 PASS.
+- Phase 4: TRAKE scorer chính thức implement per BTC spec: R-Score = matched_events / N, R@k = max R-Score top-k, Final Score = mean(R@1..R@100). 36 backend tests PASS, 12 frontend tests PASS.
+- Phase 4: Evidence Inspector mới: video player thật (seek tới anchor), exact-frame controls (±1/±10), KIS/QA/TRAKE candidate builder, mixed-video guard, candidate list tối đa 100.
 
 ## What is not done
 - Gắn ground truth có provenance cho 35 query Group A và phân loại trap category.
 - DEV/HOLDOUT Recall@1/5/20/50/100 và failure analysis.
-- QA/TRAKE scorer chính thức do chưa có scoring contract.
-- Đánh giá retrieval usefulness của ASR trên query thật và chuẩn bị fusion có kiểm chứng.
-- Video preview an toàn; môi trường hiện tại chưa mount `data_root` nên UI không giả lập playback.
+- QA semantic answer scorer: vẫn `BLOCKED_BY_SEMANTIC_ANSWER_CONTRACT` do chưa có official normalization.
 - OCR, SigLIP và Objects extraction.
-- TRAKE retrieval logic.
-- Multimodal application UI hoàn chỉnh; chưa thay mock trong `/prototype`.
+- TRAKE retrieval logic (ASR/CLIP retrieval đã có; TRAKE-specific chưa).
+- Dense-frame verification qua ffmpeg decode (hiện dùng fps-based PTS).
+- VFR video support trong resolve-frame (CFR đã covered).
 
 ## Accepted dataset facts
 1. Canonical videos: 873.
@@ -53,9 +56,9 @@
 - The dataset scale is significant, and I/O latency to Google Drive is high. Any full traversal requires caching or batched logic.
 
 ## Next Phase
-- Phase 3: migrate `/prototype` một lần theo generated contract, không khôi phục ASR-only product direction.
-- Xác minh media mount trước preview/dense-frame verification; ASR-only vẫn không được submit.
-- Song song: gắn ground truth có provenance để đo CLIP-only, ASR-only và fusion trên DEV/HOLDOUT.
+- Phase 5 (nếu cần): Gắn ground truth, đo Recall@k thật, failure analysis.
+- Hoặc: Dense-frame decode qua ffmpeg/PTS walk cho VFR video; operator frame selection refinement.
+- Song song: OCR extraction nếu dataset có text; SigLIP reranking nếu muốn nâng quality.
 
 > [!CAUTION]
 > **Product direction:** Không phát triển thêm UI ASR riêng. ASR FTS5 là provider đã PASS. ASR/OCR không tự mở submit gate; frame phải có mapping visual/dense hợp lệ và operator xác nhận.

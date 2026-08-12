@@ -83,11 +83,20 @@ def test_unlabeled_excluded_and_split_cannot_mix():
         aggregate_scores([scored, dict(unlabeled, split="holdout")], split="dev")
 
 
-@pytest.mark.parametrize("query_type", ["QA", "TRAKE"])
-def test_qa_and_trake_are_explicitly_blocked(query_type):
-    score = score_query(_kis_query(query_type=query_type), [])
+def test_qa_is_explicitly_blocked():
+    """QA semantic answer scorer remains blocked – no official normalization contract."""
+    score = score_query(_kis_query(query_type="QA"), [])
     assert score["status"] == "BLOCKED_BY_SCORING_CONTRACT"
     assert score["metrics"] is None
+
+
+def test_trake_is_now_scored(query_type="TRAKE"):
+    """Phase 4: TRAKE scorer now implemented per BTC formula; no longer blocked."""
+    trake_query = _kis_query(query_type="TRAKE")
+    trake_query["gt_events"] = [{"start_frame": 10, "end_frame": 20}]
+    score = score_query(trake_query, [])
+    assert score["status"] == "SCORED"
+    assert score["metrics"] is not None
 
 
 def test_unsupported_query_type_fails_closed():

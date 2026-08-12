@@ -12,6 +12,8 @@ from urllib.parse import parse_qs, urlparse
 
 from aic2026.core.config import load_config
 from aic2026.core.paths import PathResolver
+from aic2026.media.api_handler import write_stream_response
+from aic2026.media.resolver import MediaResolver
 from aic2026.retrieval.capabilities import CapabilityService
 from aic2026.retrieval.contract import RetrievalContractError
 from aic2026.retrieval.orchestrator import SearchOrchestrator
@@ -26,12 +28,13 @@ DEFAULT_PORT = 8765
 class AsrSearchApi:
     """Thin HTTP adapter around the canonical ASR search implementation."""
 
-    def __init__(self, database: str | Path, capability_service: CapabilityService | None = None, orchestrator: SearchOrchestrator | None = None) -> None:
+    def __init__(self, database: str | Path, capability_service: CapabilityService | None = None, orchestrator: SearchOrchestrator | None = None, media_resolver: MediaResolver | None = None) -> None:
         self.database = Path(database)
         self.capability_service = capability_service or CapabilityService(
             {"asr": AsrProvider(self.database)}
         )
         self.orchestrator = orchestrator or SearchOrchestrator(self.capability_service.providers)
+        self.media_resolver = media_resolver
 
     def health(self) -> tuple[int, dict[str, Any]]:
         if not self.database.is_file():
@@ -114,6 +117,16 @@ def make_handler(
 
         def do_GET(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
+            # Media endpoints – handled separately; failure-isolated from retrieval
+            if parsed.path.startswith("/api/v1/media/"):
+                range_hdr = self.headers.get("Range")
+                handled = write_stream_response(
+                    self, parsed.path, parsed.query, range_hdr,
+                    application.media_resolver, allowed_origins
+                )
+                if not handled:
+                    self._write_json(HTTPStatus.NOT_FOUND, {"status": "ERROR", "error": "Media endpoint not found"})
+                return
             try:
                 if parsed.path == "/api/health":
                     status, payload = application.health()
@@ -161,10 +174,11 @@ def create_server(
     allowed_origins: set[str] | None = None,
     capability_service: CapabilityService | None = None,
     orchestrator: SearchOrchestrator | None = None,
+    media_resolver: MediaResolver | None = None,
 ) -> ThreadingHTTPServer:
     origins = allowed_origins or {"http://localhost:3000", "http://127.0.0.1:3000"}
     return ThreadingHTTPServer(
-        (host, port), make_handler(AsrSearchApi(database, capability_service, orchestrator), origins)
+        (host, port), make_handler(AsrSearchApi(database, capability_service, orchestrator, media_resolver), origins)
     )
 
 
@@ -203,6 +217,12 @@ def main(argv: list[str] | None = None) -> int:
         media_root=resolver.data_root,
     )
     orchestrator = SearchOrchestrator(capability_service.providers)
+    # Media resolver – failure-isolated: missing media root does not abort startup
+    media_manifest = resolver.work("audit/videos.jsonl")
+    media_resolver = MediaResolver(
+        resolver.data_root,
+        manifest_path=media_manifest if media_manifest.exists() else None,
+    )
     server = create_server(
         database,
         host=args.host,
@@ -210,6 +230,7 @@ def main(argv: list[str] | None = None) -> int:
         allowed_origins=set(args.cors_origins) if args.cors_origins else None,
         capability_service=capability_service,
         orchestrator=orchestrator,
+        media_resolver=media_resolver,
     )
     print(f"AIC 2026 retrieval API: http://{args.host}:{args.port}")
     try:

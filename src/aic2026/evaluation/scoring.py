@@ -50,6 +50,57 @@ def score_kis(query: dict[str, Any], predictions: list[dict[str, Any]]) -> dict[
     return {"status": "SCORED", "first_correct_rank": first_correct_rank, "metrics": metrics}
 
 
+def score_trake(query: dict[str, Any], predictions: list[dict[str, Any]]) -> dict[str, Any]:
+    """TRAKE scorer per BTC spec.
+
+    R-Score = 0 if predicted_video_id != gt_video_id.
+    Otherwise: (# events with frame_id in inclusive [s_j, e_j]) / N.
+    R@k = max R-Score in first k candidates.
+    Final Score = mean(R@1, R@5, R@20, R@50, R@100).
+    """
+    candidates = validate_predictions(predictions)
+    gt_video_id = query.get("gt_video_id")
+    gt_events: list[dict[str, Any]] = query.get("gt_events") or []
+    n_events = len(gt_events)
+
+    def r_score_for_candidate(candidate: dict[str, Any]) -> float:
+        if candidate["video_id"] != gt_video_id:
+            return 0.0
+        if n_events == 0:
+            return 0.0
+        matched = sum(
+            1
+            for event in gt_events
+            if event["start_frame"] <= candidate["frame_idx"] <= event["end_frame"]
+        )
+        return matched / n_events
+
+    # R@k = max R-Score among first k candidates
+    metrics: dict[str, float] = {}
+    best_r_score = 0.0
+    best_rank: int | None = None
+    for cutoff in CUTOFFS:
+        top_k = candidates[:cutoff]
+        r_at_k = max((r_score_for_candidate(c) for c in top_k), default=0.0)
+        metrics[f"r_at_{cutoff}"] = r_at_k
+        if r_at_k > best_r_score:
+            best_r_score = r_at_k
+
+    # Find first candidate with r_score > 0 for first_correct_rank
+    for candidate in candidates:
+        if r_score_for_candidate(candidate) > 0.0:
+            best_rank = candidate["rank"]
+            break
+
+    final_score = sum(metrics[f"r_at_{k}"] for k in CUTOFFS) / len(CUTOFFS)
+    return {
+        "status": "SCORED",
+        "first_correct_rank": best_rank,
+        "metrics": metrics,
+        "trake_final_score": final_score,
+    }
+
+
 def _blocked_scorer(query: dict[str, Any], predictions: list[dict[str, Any]]) -> dict[str, Any]:
     validate_predictions(predictions)
     return {"status": BLOCKED_BY_SCORING_CONTRACT, "first_correct_rank": None, "metrics": None}
@@ -57,8 +108,8 @@ def _blocked_scorer(query: dict[str, Any], predictions: list[dict[str, Any]]) ->
 
 SCORER_REGISTRY: dict[str, Callable[[dict[str, Any], list[dict[str, Any]]], dict[str, Any]]] = {
     "KIS": score_kis,
-    "QA": _blocked_scorer,
-    "TRAKE": _blocked_scorer,
+    "QA": _blocked_scorer,  # QA semantic answer contract not yet defined
+    "TRAKE": score_trake,
 }
 
 
