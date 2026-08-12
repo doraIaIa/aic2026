@@ -43,6 +43,8 @@ def search_asr(
             s.video_id,
             s.start_sec,
             s.end_sec,
+            s.language,
+            s.model,
             snippet(asr_segments_fts, 0, '[', ']', ' … ', 24) AS text_snippet,
             v.relpath AS source_video_path,
             bm25(asr_segments_fts) AS score
@@ -71,6 +73,8 @@ def search_asr(
             "end_sec": row["end_sec"],
             "text": row["text_snippet"],
             "segment_id": row["segment_id"],
+            "language": row["language"],
+            "model": row["model"],
             "source_video_path": row["source_video_path"],
             "score": row["score"],
         }

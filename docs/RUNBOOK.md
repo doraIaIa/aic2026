@@ -165,6 +165,7 @@ cd F:\AIC_DEV\aic2026
 Endpoints:
 
 - `GET http://127.0.0.1:8765/api/health`
+- `GET http://127.0.0.1:8765/api/v1/capabilities` — trạng thái thật ASR/Visual/OCR/Object/media; lần đầu có thể chậm do checksum và lazy-load Visual.
 - `GET http://127.0.0.1:8765/api/asr/search?q=60%20gi%C3%A2y&limit=20`
 - Thêm `video_id=L21_V001` để giới hạn một video.
 

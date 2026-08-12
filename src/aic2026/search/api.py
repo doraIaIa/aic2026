@@ -12,6 +12,8 @@ from urllib.parse import parse_qs, urlparse
 
 from aic2026.core.config import load_config
 from aic2026.core.paths import PathResolver
+from aic2026.retrieval.capabilities import CapabilityService
+from aic2026.retrieval.providers import AsrProvider, VisualProvider
 from aic2026.search.asr import AsrSearchError, search_asr
 
 
@@ -22,8 +24,11 @@ DEFAULT_PORT = 8765
 class AsrSearchApi:
     """Thin HTTP adapter around the canonical ASR search implementation."""
 
-    def __init__(self, database: str | Path) -> None:
+    def __init__(self, database: str | Path, capability_service: CapabilityService | None = None) -> None:
         self.database = Path(database)
+        self.capability_service = capability_service or CapabilityService(
+            {"asr": AsrProvider(self.database)}
+        )
 
     def health(self) -> tuple[int, dict[str, Any]]:
         if not self.database.is_file():
@@ -57,6 +62,9 @@ class AsrSearchApi:
             "elapsed_ms": round(elapsed_ms, 3),
             "results": results,
         }
+
+    def capabilities(self) -> tuple[int, dict[str, Any]]:
+        return HTTPStatus.OK, self.capability_service.report()
 
 
 def _single_parameter(
@@ -103,6 +111,8 @@ def make_handler(
             try:
                 if parsed.path == "/api/health":
                     status, payload = application.health()
+                elif parsed.path == "/api/v1/capabilities":
+                    status, payload = application.capabilities()
                 elif parsed.path == "/api/asr/search":
                     status, payload = application.search(parse_qs(parsed.query, keep_blank_values=True))
                 else:
@@ -126,9 +136,12 @@ def create_server(
     host: str = DEFAULT_HOST,
     port: int = DEFAULT_PORT,
     allowed_origins: set[str] | None = None,
+    capability_service: CapabilityService | None = None,
 ) -> ThreadingHTTPServer:
     origins = allowed_origins or {"http://localhost:3000", "http://127.0.0.1:3000"}
-    return ThreadingHTTPServer((host, port), make_handler(AsrSearchApi(database), origins))
+    return ThreadingHTTPServer(
+        (host, port), make_handler(AsrSearchApi(database, capability_service), origins)
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -158,11 +171,19 @@ def main(argv: list[str] | None = None) -> int:
     if not database.is_file():
         print(f"ASR search database not found: {database}", file=sys.stderr)
         return 2
+    capability_service = CapabilityService(
+        {
+            "asr": AsrProvider(database),
+            "visual": VisualProvider(resolver.artifact("m1/clip-faiss-btc-v1")),
+        },
+        media_root=resolver.data_root,
+    )
     server = create_server(
         database,
         host=args.host,
         port=args.port,
         allowed_origins=set(args.cors_origins) if args.cors_origins else None,
+        capability_service=capability_service,
     )
     print(f"ASR search API: http://{args.host}:{args.port}")
     try:

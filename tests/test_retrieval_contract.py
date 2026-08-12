@@ -126,6 +126,14 @@ def test_media_capability_hides_root(monkeypatch, tmp_path: Path):
     assert media_capability(tmp_path)["root_exposed"] is False
 
 
+def test_media_capability_fails_safe_when_root_is_inaccessible(monkeypatch):
+    monkeypatch.delenv("AIC_MEDIA_ROOT", raising=False)
+    monkeypatch.setattr(Path, "is_dir", lambda self: (_ for _ in ()).throw(PermissionError()))
+    capability = media_capability("G:/inaccessible")
+    assert capability["status"] == "MEDIA_UNAVAILABLE"
+    assert capability["reason"] == "MEDIA_ROOT_INACCESSIBLE: PermissionError"
+
+
 def test_frontend_type_generator_embeds_contract_checksum(tmp_path: Path):
     output = tmp_path / "retrieval-contract.generated.ts"
     subprocess.run(

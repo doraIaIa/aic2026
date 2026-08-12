@@ -18,9 +18,9 @@
 - Read-only ASR HTTP API và diagnostic frontend tại `F:\aic-video-search-demo`
 - Phase 0: retrieval JSON Schema/policy v1, backend validator, fixtures và generated TypeScript checksum
 - Frontend local Git baseline commit; demo/product source tách khỏi node_modules/dist/media/cache
+- Phase 1 ASR/Visual provider adapters, integrity validation, lifecycle cache và capability endpoint
 
 ## NEXT
-- Provider adapters Visual/ASR và capability reporting cho OCR/Object unavailable
 - Deterministic EvidenceWindow clustering, max span 12 giây và per-lane collapsed RRF
 - Unified `POST /api/v1/search`; chưa tạo stateless evidence detail endpoint
 - Sau đó migrate `/prototype` một lần theo generated contract
@@ -32,6 +32,7 @@
 ## BLOCKED
 - Metric chất lượng baseline: BLOCKED_BY_GROUND_TRUTH
 - QA scorer và TRAKE scorer: BLOCKED_BY_SCORING_CONTRACT
+- Media preview/verification: MEDIA_UNAVAILABLE trong môi trường hiện tại
 
 ## NOT YET
 - OCR

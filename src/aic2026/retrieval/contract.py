@@ -236,5 +236,15 @@ def validate_search_response(raw: Any) -> dict[str, Any]:
 
 def media_capability(configured_root: str | Path | None = None) -> dict[str, Any]:
     candidate = os.getenv("AIC_MEDIA_ROOT") or configured_root
-    available = bool(candidate and Path(candidate).is_dir())
-    return {"status": "AVAILABLE" if available else "MEDIA_UNAVAILABLE", "read_only": True, "root_exposed": False}
+    try:
+        available = bool(candidate and Path(candidate).is_dir())
+        reason = None if available else "MEDIA_ROOT_NOT_MOUNTED"
+    except OSError as exc:
+        available = False
+        reason = f"MEDIA_ROOT_INACCESSIBLE: {type(exc).__name__}"
+    return {
+        "status": "AVAILABLE" if available else "MEDIA_UNAVAILABLE",
+        "reason": reason,
+        "read_only": True,
+        "root_exposed": False,
+    }

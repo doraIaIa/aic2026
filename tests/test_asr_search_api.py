@@ -21,7 +21,9 @@ def _database(path: Path) -> Path:
                 video_id TEXT NOT NULL,
                 start_sec REAL NOT NULL,
                 end_sec REAL NOT NULL,
-                text TEXT NOT NULL
+                text TEXT NOT NULL,
+                language TEXT NOT NULL DEFAULT 'vi',
+                model TEXT NOT NULL DEFAULT 'medium'
             );
             CREATE VIRTUAL TABLE asr_segments_fts USING fts5(
                 text,
@@ -61,6 +63,15 @@ def test_asr_search_api_health_search_filter_and_validation(tmp_path: Path) -> N
         status, health = _get_json(f"{base_url}/api/health")
         assert status == 200
         assert health["status"] == "OK"
+
+        status, capabilities = _get_json(f"{base_url}/api/v1/capabilities")
+        assert status == 200
+        assert capabilities["contract_version"] == "retrieval.v1"
+        assert capabilities["providers"]["asr"]["status"] == "OK"
+        assert capabilities["providers"]["visual"]["status"] == "UNAVAILABLE"
+        assert capabilities["providers"]["ocr"]["status"] == "UNAVAILABLE"
+        assert capabilities["providers"]["object"]["status"] == "UNAVAILABLE"
+        assert capabilities["media"]["status"] == "MEDIA_UNAVAILABLE"
 
         status, payload = _get_json(f"{base_url}/api/asr/search?q=thanh%20pho&limit=5")
         assert status == 200

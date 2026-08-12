@@ -20,3 +20,10 @@ python scripts/generate_retrieval_contract_types.py `
 ```
 
 Header generated file chứa `contract_version`, `policy_version` và checksum toàn bộ JSON contract. Phase 0 chỉ khóa contract; chưa triển khai provider hoặc orchestrator.
+
+## Phase 1 provider layer
+
+- `AsrProvider` chỉ gọi production authority `aic2026.search.asr` trên SQLite mở read-only. Product query được biên dịch theo FTS policy v1; raw FTS vẫn chỉ thuộc diagnostic CLI.
+- `VisualProvider` xác minh `DONE.json`, checksum index/metadata, count, dimension, stable embedding ID và mapping `csv_n ↔ clip_row ↔ keyframe ordinal` trước khi lane `OK`.
+- OpenCLIP model, tokenizer, metadata và FAISS index được lazy-load một lần cho application lifecycle. Một lock serialize text encoding + FAISS search; raw cosine/BM25 không được so sánh trong provider layer.
+- `GET /api/v1/capabilities` chỉ báo trạng thái thật của provider/media. Endpoint chưa search đa phương thức và chưa fusion.

@@ -21,6 +21,8 @@
 - ASR route hiện chỉ là diagnostic/smoke UI; không phải product architecture.
 - Unified retrieval contract/policy v1 đã khóa bằng JSON Schema, backend validation, fixtures và generated frontend type có checksum.
 - Demo frontend đã có local Git baseline; `/prototype` là product shell sẽ migrate sau khi backend provider/orchestrator hoàn tất.
+- Phase 1 provider layer đã có ASR/Visual adapters, cached OpenCLIP/FAISS lifecycle và `GET /api/v1/capabilities`.
+- Production capability smoke: ASR 873 video/107.540 segment/FTS rows; Visual 177.321 vector, dimension 512; checksum đúng marker. OCR/Object vẫn `UNAVAILABLE`; media hiện `MEDIA_UNAVAILABLE`.
 
 ## What is not done
 - Gắn ground truth có provenance cho 35 query Group A và phân loại trap category.
@@ -30,7 +32,7 @@
 - Video preview an toàn; môi trường hiện tại chưa mount `data_root` nên UI không giả lập playback.
 - OCR, SigLIP và Objects extraction.
 - TRAKE retrieval logic.
-- Provider adapter Visual/ASR, temporal windowing, lane-collapse RRF và unified search endpoint.
+- Temporal windowing, lane-collapse RRF và unified search endpoint.
 - Multimodal application UI hoàn chỉnh; chưa thay mock trong `/prototype`.
 
 ## Accepted dataset facts
@@ -50,8 +52,7 @@
 - The dataset scale is significant, and I/O latency to Google Drive is high. Any full traversal requires caching or batched logic.
 
 ## Next Phase
-- Phase 1: provider adapter Visual/ASR theo contract v1; OCR/Object báo `UNAVAILABLE`.
-- Phase 2: deterministic windowing và RRF collapse theo lane trước fusion.
+- Phase 2: deterministic windowing và RRF collapse theo lane trước fusion, sau đó unified `POST /api/v1/search`.
 - Song song: gắn ground truth có provenance để đo CLIP-only, ASR-only và fusion trên DEV/HOLDOUT.
 
 > [!CAUTION]
