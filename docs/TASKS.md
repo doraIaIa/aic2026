@@ -15,9 +15,11 @@
 - Group A ASR pilot manifest: 95 video, 2 worker shard (48/47)
 - Full ASR search DB: 873 video, 107.540 segments, 107.540 FTS rows, 0 orphan/duplicate
 - CLI `python -m aic2026.search.asr` và atomic/idempotent index builder
+- Read-only ASR HTTP API và frontend React/Vite ASR-only tại `F:\aic-video-search-demo`
 
 ## NEXT
 - Review ASR-only search quality trên Group A queries
+- Xác thực media mount rồi mới thêm video streaming/seek preview an toàn
 - Định nghĩa ablation CLIP-only so với CLIP+ASR sau khi có ground truth
 - Thẩm định top candidates và gắn ground truth có provenance
 - Tách DEV/HOLDOUT rồi chạy baseline, báo Recall@K và failure analysis
@@ -28,7 +30,6 @@
 
 ## NOT YET
 - OCR
-- ASR full corpus (chỉ mở sau pilot GO/NO-GO)
 - Objects
 - SigLIP
 - TRAKE

@@ -149,3 +149,30 @@ python -m aic2026.search.asr "bão lũ" --json
 ```
 
 FTS dùng `unicode61 remove_diacritics 2`; tìm không dấu tiện hơn nhưng có thể tăng false positive giữa các từ chỉ khác dấu. Dùng phrase query và `--video-id` khi cần tăng precision. ASR timestamp vẫn chỉ là temporal anchor.
+
+## Local ASR Search API và demo UI
+
+Khởi chạy API read-only từ repo chính; API reuse `aic2026.search.asr.search_asr`, không chứa SQL riêng và không copy database sang frontend:
+
+```powershell
+cd F:\AIC_DEV\aic2026
+.\.venv\Scripts\python.exe -m aic2026.search.api --config configs/local.toml
+```
+
+Endpoints:
+
+- `GET http://127.0.0.1:8765/api/health`
+- `GET http://127.0.0.1:8765/api/asr/search?q=60%20gi%C3%A2y&limit=20`
+- Thêm `video_id=L21_V001` để giới hạn một video.
+
+Chạy frontend riêng ở `F:\aic-video-search-demo`:
+
+```powershell
+cd F:\aic-video-search-demo
+corepack pnpm install --frozen-lockfile
+corepack pnpm dev
+```
+
+Mở `http://localhost:3000`. Vite proxy `/api` tới `http://127.0.0.1:8765`; có thể override bằng biến `AIC_API_URL`. Route `/prototype` giữ nguyên bản mock cũ để tham chiếu, còn `/` là ASR search thật.
+
+Video preview chưa bật: `source_video_path` trong DB là relative path đúng contract, nhưng `data_root` phải được mount và media phải được serve qua endpoint có kiểm soát. Không chuyển ASR timestamp thành submission frame ID.
