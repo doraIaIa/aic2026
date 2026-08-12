@@ -15,13 +15,15 @@
 - Candidate review artifact và failure sheet đã sẵn sàng tại `F:\AIC_WORK\artifacts\evaluation\group-a-review-v1`.
 - M2-ASR pilot pipeline đã sẵn sàng: faster-whisper `medium`, tiếng Việt, resume/checksum/DONE, merge và SQLite FTS5.
 - Group A ASR pilot manifest có 95 video unique từ top-20 candidates; kế hoạch chính dùng 2 worker: Colab 48 video và Kaggle 47 video.
+- Full-corpus ASR đã merge đủ 873 video / 107.540 segments; SQLite FTS5 search index tại `F:\AIC_WORK\db\aic.sqlite` đã PASS integrity/count/smoke tests.
+- CLI ASR search hỗ trợ BM25, phrase query, `video_id` filter, JSON output và tìm tiếng Việt không dấu qua `unicode61 remove_diacritics 2`.
 
 ## What is not done
 - Gắn ground truth có provenance cho 35 query Group A và phân loại trap category.
 - DEV/HOLDOUT Recall@1/5/20/50/100 và failure analysis.
 - QA/TRAKE scorer chính thức do chưa có scoring contract.
-- Chạy 2 ASR pilot shard trên GPU và thẩm định transcript/retrieval usefulness.
-- ASR full corpus; OCR, SigLIP và Objects extraction.
+- Đánh giá retrieval usefulness của ASR trên query thật và chuẩn bị fusion có kiểm chứng.
+- OCR, SigLIP và Objects extraction.
 - TRAKE retrieval logic.
 - Application UI.
 
@@ -42,7 +44,7 @@
 - The dataset scale is significant, and I/O latency to Google Drive is high. Any full traversal requires caching or batched logic.
 
 ## Next Phase
-- Chạy ASR pilot shard trên Colab/Kaggle hợp lệ, merge transcript, build FTS và thẩm định usefulness.
+- Dùng ASR CLI trên query thật, review false positives/phrase behavior và đo usefulness trước fusion.
 - Song song: gắn ground truth có provenance để đo CLIP-only và +ASR khi dữ liệu nhãn sẵn sàng.
 
 > [!CAUTION]

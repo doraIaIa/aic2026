@@ -13,17 +13,18 @@
 - Candidate review CSV và failure sheet
 - M2-ASR pilot code: manifest/shard/resume/checksum/merge/FTS5
 - Group A ASR pilot manifest: 95 video, 2 worker shard (48/47)
+- Full ASR search DB: 873 video, 107.540 segments, 107.540 FTS rows, 0 orphan/duplicate
+- CLI `python -m aic2026.search.asr` và atomic/idempotent index builder
 
 ## NEXT
-- Chạy Colab shard 0 và Kaggle shard 1 bằng faster-whisper `medium`/`vi`
-- Merge transcript, build FTS5 và review ASR hits
+- Review ASR-only search quality trên Group A queries
+- Định nghĩa ablation CLIP-only so với CLIP+ASR sau khi có ground truth
 - Thẩm định top candidates và gắn ground truth có provenance
 - Tách DEV/HOLDOUT rồi chạy baseline, báo Recall@K và failure analysis
 
 ## BLOCKED
 - Metric chất lượng baseline: BLOCKED_BY_GROUND_TRUTH
 - QA scorer và TRAKE scorer: BLOCKED_BY_SCORING_CONTRACT
-- ASR smoke thật tại local: BLOCKED_BY_RUNTIME (`faster-whisper` chưa cài, không có CUDA)
 
 ## NOT YET
 - OCR

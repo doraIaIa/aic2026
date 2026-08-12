@@ -130,3 +130,22 @@ python -m aic2026.cli search-asr `
 Sau FTS, `export-asr-candidates` chạy batch 35 Group A query và tạo `asr_candidate_review.csv`. `--metadata` là optional; chỉ truyền M1 metadata JSONL đã validate khi cần nearest keyframe/frame.
 
 Chỉ chạy full corpus nếu pilot có transcript hữu ích và chi phí chấp nhận được. Lượt này không tạo hoặc chạy shard cho toàn bộ 873 video. ASR timestamps chỉ là temporal anchors, không phải submission frame IDs.
+
+## Full-corpus ASR SQLite search
+
+Build/rebuild atomic từ merged final JSONL; builder từ chối `.partial.jsonl`, backup DB cũ khi `--force`, validate trước khi swap và ghi report vào `F:\AIC_WORK\validation`:
+
+```powershell
+python -m aic2026.search.build_asr_index --config configs/local.toml --force
+```
+
+Chạy lại không `--force` là idempotent khi source fingerprint và integrity vẫn khớp.
+
+```powershell
+python -m aic2026.search.asr "thành phố hồ chí minh"
+python -m aic2026.search.asr "60 giây" --limit 20
+python -m aic2026.search.asr '"chào mừng quý vị"' --video-id L21_V001
+python -m aic2026.search.asr "bão lũ" --json
+```
+
+FTS dùng `unicode61 remove_diacritics 2`; tìm không dấu tiện hơn nhưng có thể tăng false positive giữa các từ chỉ khác dấu. Dùng phrase query và `--video-id` khi cần tăng precision. ASR timestamp vẫn chỉ là temporal anchor.
