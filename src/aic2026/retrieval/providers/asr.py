@@ -62,10 +62,8 @@ class AsrProvider:
         if capability.status != "OK":
             raise ProviderUnavailableError(capability.reason or capability.status)
         compiled = compile_product_fts_query(query.query_text)
-        if len(query.video_ids) > 1:
-            raise ValueError("ASR provider v1 chỉ hỗ trợ tối đa một video_id filter")
         try:
-            rows = search_asr(self.database, compiled, limit=query.top_k, video_id=query.video_ids[0] if query.video_ids else None)
+            rows = search_asr(self.database, compiled, limit=query.top_k, video_ids=query.video_ids)
         except AsrSearchError as exc:
             raise ProviderUnavailableError(str(exc)) from exc
         hits: list[ProviderHit] = []

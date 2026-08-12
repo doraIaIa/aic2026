@@ -28,6 +28,7 @@ def search_asr(
     *,
     limit: int = 20,
     video_id: str | None = None,
+    video_ids: tuple[str, ...] | list[str] | None = None,
 ) -> list[dict[str, Any]]:
     if not isinstance(query, str) or not query.strip():
         raise AsrSearchError("Query must be a non-empty string")
@@ -36,6 +37,11 @@ def search_asr(
     db_path = Path(database)
     if not db_path.is_file():
         raise AsrSearchError(f"Database not found: {db_path}")
+    if video_id is not None and video_ids:
+        raise AsrSearchError("Use either video_id or video_ids, not both")
+    selected_video_ids = tuple(video_ids or (() if video_id is None else (video_id,)))
+    if len(selected_video_ids) > 100 or len(selected_video_ids) != len(set(selected_video_ids)):
+        raise AsrSearchError("video_ids must contain at most 100 unique IDs")
 
     sql = """
         SELECT
@@ -54,9 +60,9 @@ def search_asr(
         WHERE asr_segments_fts MATCH ?
     """
     parameters: list[Any] = [query.strip()]
-    if video_id is not None:
-        sql += " AND s.video_id = ?"
-        parameters.append(video_id)
+    if selected_video_ids:
+        sql += f" AND s.video_id IN ({','.join('?' for _ in selected_video_ids)})"
+        parameters.extend(selected_video_ids)
     sql += " ORDER BY score ASC, s.segment_id ASC LIMIT ?"
     parameters.append(limit)
     try:

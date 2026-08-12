@@ -166,8 +166,27 @@ Endpoints:
 
 - `GET http://127.0.0.1:8765/api/health`
 - `GET http://127.0.0.1:8765/api/v1/capabilities` — trạng thái thật ASR/Visual/OCR/Object/media; lần đầu có thể chậm do checksum và lazy-load Visual.
+- `POST http://127.0.0.1:8765/api/v1/search` — unified retrieval v1; schema xem `docs/openapi-retrieval-v1.yaml`.
 - `GET http://127.0.0.1:8765/api/asr/search?q=60%20gi%C3%A2y&limit=20`
 - Thêm `video_id=L21_V001` để giới hạn một video.
+
+Ví dụ unified search auto baseline:
+
+```powershell
+$body = @{
+  contract_version = "retrieval.v1"
+  request_id = "runbook-001"
+  mode = "KIS"
+  query_text = "thành phố"
+  mode_context = @{}
+  routing = @{ strategy = "auto"; enabled_lanes = @("visual", "asr"); object_match = "soft" }
+  filters = @{ video_ids = @(); start_sec = $null; end_sec = $null }
+  result_limit = 20
+} | ConvertTo-Json -Depth 5
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8765/api/v1/search -ContentType application/json -Body $body
+```
+
+`strategy=auto` luôn có reason `baseline_all_available_v1`; đây chưa phải learned router. Dùng `manual` để chỉ chạy lane trong `enabled_lanes`. OCR/Object enabled nhưng chưa có artifact sẽ báo `UNAVAILABLE`, không trả mock.
 
 Chạy frontend riêng ở `F:\aic-video-search-demo`:
 

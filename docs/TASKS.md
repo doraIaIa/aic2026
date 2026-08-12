@@ -19,11 +19,12 @@
 - Phase 0: retrieval JSON Schema/policy v1, backend validator, fixtures và generated TypeScript checksum
 - Frontend local Git baseline commit; demo/product source tách khỏi node_modules/dist/media/cache
 - Phase 1 ASR/Visual provider adapters, integrity validation, lifecycle cache và capability endpoint
+- Phase 2 auto/manual orchestrator, deterministic EvidenceWindow, bounded concurrency và RRF `k=60`
+- Unified `POST /api/v1/search` cùng OpenAPI companion
 
 ## NEXT
-- Deterministic EvidenceWindow clustering, max span 12 giây và per-lane collapsed RRF
-- Unified `POST /api/v1/search`; chưa tạo stateless evidence detail endpoint
-- Sau đó migrate `/prototype` một lần theo generated contract
+- Migrate `/prototype` một lần theo generated contract; không tạo UI ASR riêng
+- Giữ search response self-contained; chưa tạo stateless evidence detail endpoint
 - Xác thực media mount rồi mới thêm video streaming/seek preview an toàn
 - Định nghĩa ablation CLIP-only, ASR-only và CLIP+ASR sau khi có ground truth
 - Thẩm định top candidates và gắn ground truth có provenance

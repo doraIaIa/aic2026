@@ -13,6 +13,8 @@ from urllib.parse import parse_qs, urlparse
 from aic2026.core.config import load_config
 from aic2026.core.paths import PathResolver
 from aic2026.retrieval.capabilities import CapabilityService
+from aic2026.retrieval.contract import RetrievalContractError
+from aic2026.retrieval.orchestrator import SearchOrchestrator
 from aic2026.retrieval.providers import AsrProvider, VisualProvider
 from aic2026.search.asr import AsrSearchError, search_asr
 
@@ -24,11 +26,12 @@ DEFAULT_PORT = 8765
 class AsrSearchApi:
     """Thin HTTP adapter around the canonical ASR search implementation."""
 
-    def __init__(self, database: str | Path, capability_service: CapabilityService | None = None) -> None:
+    def __init__(self, database: str | Path, capability_service: CapabilityService | None = None, orchestrator: SearchOrchestrator | None = None) -> None:
         self.database = Path(database)
         self.capability_service = capability_service or CapabilityService(
             {"asr": AsrProvider(self.database)}
         )
+        self.orchestrator = orchestrator or SearchOrchestrator(self.capability_service.providers)
 
     def health(self) -> tuple[int, dict[str, Any]]:
         if not self.database.is_file():
@@ -66,6 +69,9 @@ class AsrSearchApi:
     def capabilities(self) -> tuple[int, dict[str, Any]]:
         return HTTPStatus.OK, self.capability_service.report()
 
+    def unified_search(self, request: Any) -> tuple[int, dict[str, Any]]:
+        return HTTPStatus.OK, self.orchestrator.search(request)
+
 
 def _single_parameter(
     parameters: dict[str, list[str]], field: str, *, required: bool
@@ -101,7 +107,7 @@ def make_handler(
                 return
             self.send_response(HTTPStatus.NO_CONTENT)
             self.send_header("Access-Control-Allow-Origin", origin)
-            self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.send_header("Vary", "Origin")
             self.end_headers()
@@ -124,6 +130,23 @@ def make_handler(
                 status, payload = HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": str(exc)}
             self._write_json(status, payload)
 
+        def do_POST(self) -> None:  # noqa: N802
+            parsed = urlparse(self.path)
+            if parsed.path != "/api/v1/search":
+                self._write_json(HTTPStatus.NOT_FOUND, {"status": "ERROR", "error": "Endpoint not found"})
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if length <= 0 or length > 1024 * 1024:
+                    raise RetrievalContractError("Request body phải nằm trong 1 byte..1 MiB")
+                request = json.loads(self.rfile.read(length).decode("utf-8"))
+                status, payload = application.unified_search(request)
+            except (RetrievalContractError, json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
+                status, payload = HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": str(exc)}
+            except Exception as exc:
+                status, payload = HTTPStatus.INTERNAL_SERVER_ERROR, {"status": "ERROR", "error": f"{type(exc).__name__}: {exc}"}
+            self._write_json(status, payload)
+
         def log_message(self, format: str, *args: object) -> None:
             print(f"[asr-api] {self.address_string()} {format % args}")
 
@@ -137,17 +160,18 @@ def create_server(
     port: int = DEFAULT_PORT,
     allowed_origins: set[str] | None = None,
     capability_service: CapabilityService | None = None,
+    orchestrator: SearchOrchestrator | None = None,
 ) -> ThreadingHTTPServer:
     origins = allowed_origins or {"http://localhost:3000", "http://127.0.0.1:3000"}
     return ThreadingHTTPServer(
-        (host, port), make_handler(AsrSearchApi(database, capability_service), origins)
+        (host, port), make_handler(AsrSearchApi(database, capability_service, orchestrator), origins)
     )
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m aic2026.search.api",
-        description="Serve the read-only AIC 2026 ASR search API for a local UI.",
+        description="Serve AIC 2026 provider capabilities, unified retrieval v1, and ASR diagnostics.",
     )
     parser.add_argument("--config", default="configs/local.toml")
     parser.add_argument("--database", help="override SQLite database path")
@@ -178,20 +202,23 @@ def main(argv: list[str] | None = None) -> int:
         },
         media_root=resolver.data_root,
     )
+    orchestrator = SearchOrchestrator(capability_service.providers)
     server = create_server(
         database,
         host=args.host,
         port=args.port,
         allowed_origins=set(args.cors_origins) if args.cors_origins else None,
         capability_service=capability_service,
+        orchestrator=orchestrator,
     )
-    print(f"ASR search API: http://{args.host}:{args.port}")
+    print(f"AIC 2026 retrieval API: http://{args.host}:{args.port}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         print("Stopping ASR search API.")
     finally:
         server.server_close()
+        orchestrator.close()
     return 0
 
 

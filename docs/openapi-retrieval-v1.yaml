@@ -1,0 +1,35 @@
+openapi: 3.1.0
+info:
+  title: AIC 2026 Unified Retrieval API
+  version: retrieval.v1
+  description: >-
+    Tài liệu HTTP cho contract authority tại
+    src/aic2026/retrieval/contracts/v1/retrieval.schema.json.
+    File này không thay thế JSON Schema/policy backend.
+paths:
+  /api/v1/capabilities:
+    get:
+      summary: Báo trạng thái thật của provider và media
+      responses:
+        "200":
+          description: Capability report; không chạy retrieval fusion.
+  /api/v1/search:
+    post:
+      summary: Chạy unified retrieval v1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../src/aic2026/retrieval/contracts/v1/retrieval.schema.json#/$defs/SearchRequest
+      responses:
+        "200":
+          description: SearchResponse hợp lệ, kể cả status PARTIAL hoặc ERROR do provider.
+          content:
+            application/json:
+              schema:
+                $ref: ../src/aic2026/retrieval/contracts/v1/retrieval.schema.json#/$defs/SearchResponse
+        "400":
+          description: Request vi phạm retrieval.v1 hoặc JSON malformed.
+        "500":
+          description: Lỗi ngoài provider boundary không dự kiến.

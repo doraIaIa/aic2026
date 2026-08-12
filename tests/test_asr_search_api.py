@@ -6,7 +6,7 @@ import threading
 from contextlib import closing
 from pathlib import Path
 from urllib.error import HTTPError
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 from aic2026.search.api import create_server
 
@@ -54,6 +54,15 @@ def _get_json(url: str) -> tuple[int, dict]:
         return exc.code, json.loads(exc.read().decode("utf-8"))
 
 
+def _post_json(url: str, payload: dict) -> tuple[int, dict]:
+    request = Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        with urlopen(request, timeout=5) as response:
+            return response.status, json.loads(response.read().decode("utf-8"))
+    except HTTPError as exc:
+        return exc.code, json.loads(exc.read().decode("utf-8"))
+
+
 def test_asr_search_api_health_search_filter_and_validation(tmp_path: Path) -> None:
     server = create_server(_database(tmp_path / "aic.sqlite"), port=0)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -72,6 +81,28 @@ def test_asr_search_api_health_search_filter_and_validation(tmp_path: Path) -> N
         assert capabilities["providers"]["ocr"]["status"] == "UNAVAILABLE"
         assert capabilities["providers"]["object"]["status"] == "UNAVAILABLE"
         assert capabilities["media"]["status"] == "MEDIA_UNAVAILABLE"
+
+        search_request = {
+            "contract_version": "retrieval.v1",
+            "request_id": "api-smoke",
+            "mode": "KIS",
+            "query_text": "thanh pho",
+            "mode_context": {},
+            "routing": {"strategy": "auto", "enabled_lanes": ["asr"], "object_match": "soft"},
+            "filters": {"video_ids": [], "start_sec": None, "end_sec": None},
+            "result_limit": 5,
+        }
+        status, unified = _post_json(f"{base_url}/api/v1/search", search_request)
+        assert status == 200
+        assert unified["status"] == "OK"
+        assert unified["route"]["reason"] == "baseline_all_available_v1"
+        assert unified["results"][0]["representative"]["submit_valid"] is False
+        assert unified["results"][0]["evidence"][0]["modality"] == "asr"
+
+        search_request["result_limit"] = 101
+        status, malformed = _post_json(f"{base_url}/api/v1/search", search_request)
+        assert status == 400
+        assert malformed["status"] == "ERROR"
 
         status, payload = _get_json(f"{base_url}/api/asr/search?q=thanh%20pho&limit=5")
         assert status == 200

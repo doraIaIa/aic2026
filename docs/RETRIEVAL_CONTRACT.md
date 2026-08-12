@@ -27,3 +27,12 @@ Header generated file chứa `contract_version`, `policy_version` và checksum t
 - `VisualProvider` xác minh `DONE.json`, checksum index/metadata, count, dimension, stable embedding ID và mapping `csv_n ↔ clip_row ↔ keyframe ordinal` trước khi lane `OK`.
 - OpenCLIP model, tokenizer, metadata và FAISS index được lazy-load một lần cho application lifecycle. Một lock serialize text encoding + FAISS search; raw cosine/BM25 không được so sánh trong provider layer.
 - `GET /api/v1/capabilities` chỉ báo trạng thái thật của provider/media. Endpoint chưa search đa phương thức và chưa fusion.
+
+## Phase 2 orchestrator
+
+- `POST /api/v1/search` nhận `SearchRequest` và trả đầy đủ `SearchResponse.results: EvidenceWindow[]`; không có stateless detail endpoint.
+- Auto route có reason cố định `baseline_all_available_v1` và chạy mọi provider đang `OK`; manual route chỉ load/chạy lane được bật.
+- Provider chạy bounded concurrency. Timeout/lỗi một lane trả `PARTIAL`; không còn lane thành công trả `ERROR` trong response.
+- Windowing dùng biên inclusive 4 giây, span tối đa 12 giây, cùng video, deduplicate `(modality, evidence_id)` và ID băm deterministic.
+- RRF equal-weight `k=60` chỉ lấy best rank từng lane trong mỗi window; mọi evidence vẫn được giữ để giải thích.
+- OpenAPI companion: `docs/openapi-retrieval-v1.yaml`. JSON Schema/policy backend vẫn là authority.
