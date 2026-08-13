@@ -13,7 +13,7 @@ import numpy as np
 from aic2026.core.atomic import atomic_write_json, atomic_write_text
 from aic2026.core.hashing import sha256_bytes, sha256_file
 from aic2026.evaluation.contract import EvalContractError, load_eval_dataset
-from aic2026.evaluation.scoring import aggregate_scores, score_query
+from aic2026.evaluation.scoring import aggregate_scores, aggregate_video_scores, score_query, score_video_retrieval
 from aic2026.jobs.artifact import append_jsonl, read_valid_jsonl_prefix
 
 
@@ -249,11 +249,12 @@ def run_baseline_evaluation(
                     "score": similarity,
                 })
             score = score_query(query, predictions)
+            video_score = score_video_retrieval(query, predictions)
             record = {
                 "query_id": query["query_id"], "query_type": query["query_type"],
                 "trap_category": query["trap_category"], "split": query["split"],
                 "label_status": query["label_status"], "status": "OK",
-                "predictions": predictions, "score": score,
+                "predictions": predictions, "score": score, "video_score": video_score,
                 "latency_ms": (time.perf_counter() - started) * 1000,
             }
         except Exception as exc:
@@ -262,7 +263,7 @@ def run_baseline_evaluation(
                 "trap_category": query["trap_category"], "split": query["split"],
                 "label_status": query["label_status"], "status": "ERROR",
                 "error_type": type(exc).__name__, "error": str(exc),
-                "predictions": [], "score": None,
+                "predictions": [], "score": None, "video_score": None,
                 "latency_ms": (time.perf_counter() - started) * 1000,
             }
         append_jsonl(partial_path, record)
@@ -271,6 +272,7 @@ def run_baseline_evaluation(
     rows = [rows_by_id[query["query_id"]] for query in selected]
     failed = sum(row["status"] == "ERROR" for row in rows)
     aggregate = aggregate_scores(rows, split=split)
+    aggregate_video = aggregate_video_scores(rows, split=split)
     latencies = [float(row["latency_ms"]) for row in rows]
     if aggregate["scored"]:
         quality_status = "SCORED"
@@ -296,6 +298,7 @@ def run_baseline_evaluation(
                   "source_model": index_marker.get("model"),
                   "source_model_revision": index_marker.get("model_revision")},
         "counts": aggregate,
+        "video_counts": aggregate_video,
         "latency_ms": {"p50": _percentile(latencies, 0.50),
                        "p95": _percentile(latencies, 0.95),
                        "mean": sum(latencies) / len(latencies) if latencies else None},
