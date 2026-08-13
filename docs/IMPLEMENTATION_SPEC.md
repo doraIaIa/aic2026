@@ -1,17 +1,23 @@
+bbvbvbvbvbvbvbvbvvbv 
+
 # Implementation specification v0.1
 
 ## 1. System boundaries
 
 ### GitHub
+
 Stores source code, small config templates, manifests without private raw data, tests, documentation, and reproducible job definitions.
 
 ### Google Drive
+
 Canonical read-only BTC corpus and durable derived artifacts/checkpoints that must survive ephemeral cloud runtimes.
 
 ### Local Windows machine
+
 Control plane and source of truth for validated SQLite/FAISS/index state. Uses `F:/AIC_WORK` as an explicit managed cache/work area where possible.
 
 ### Colab/Kaggle
+
 Stateless or disposable compute workers. They process deterministic shards and emit immutable results. They never become the only location of important state.
 
 ## 2. Execution lifecycle

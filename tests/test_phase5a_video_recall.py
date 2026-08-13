@@ -39,7 +39,7 @@ def test_video_recall_trake():
         "video_label_provenance": "INTERNAL_MANUAL_VERIFIED",
         "verified_video_id": "L01_V001",
     }
-    preds = [{"video_id": "L01_V001", "frame_idx": 50}]
+    preds = [{"video_id": "L01_V001", "frame_ids": [50]}]
     res = score_video_retrieval(query, preds)
     assert res["status"] == "SCORED"
     assert res["first_video_rank"] == 1
@@ -130,31 +130,39 @@ def test_exact_kis_regression():
     preds1 = [{"video_id": "L01_V001", "frame_idx": 50}]
     res1 = score_kis(query, preds1)
     assert res1["first_correct_rank"] is None
-    
+
     # Correct video, correct frame
     preds2 = [{"video_id": "L01_V001", "frame_idx": 120}]
     res2 = score_kis(query, preds2)
     assert res2["first_correct_rank"] == 1
 
-def test_exact_trake_multi_event_regression():
+def test_exact_trake_correct_model():
     query = {
         "query_type": "TRAKE",
-        "gt_video_id": "L01_V001",
+        "gt_video_id": "A",
         "gt_events": [
-            {"start_frame": 100, "end_frame": 150},
-            {"start_frame": 300, "end_frame": 350},
+            {"start_frame": 100, "end_frame": 110},
+            {"start_frame": 200, "end_frame": 210},
         ]
     }
-    # One event matched
-    preds1 = [{"video_id": "L01_V001", "frame_idx": 120}]
-    res1 = score_trake(query, preds1)
-    assert res1["metrics"]["r_at_1"] == 0.5
-    
-    # Another prediction matches the other event
-    preds2 = [
-        {"video_id": "L01_V001", "frame_idx": 120},
-        {"video_id": "L01_V001", "frame_idx": 320},
+    # Expected cases:
+    # A, [105,205] -> 1.0
+    # A, [105,500] -> 0.5
+    # A, [500,205] -> 0.5
+    # A, [500,500] -> 0.0
+    # B, [105,205] -> 0.0
+
+    preds = [
+        {"video_id": "A", "frame_ids": [105, 500]}, # rank 1
+        {"video_id": "B", "frame_ids": [105, 205]}, # rank 2
+        {"video_id": "A", "frame_ids": [500, 500]}, # rank 3
+        {"video_id": "A", "frame_ids": [105, 205]}, # rank 4
+        {"video_id": "A", "frame_ids": [500, 205]}, # rank 5
     ]
-    res2 = score_trake(query, preds2)
-    assert res2["metrics"]["r_at_1"] == 0.5
-    assert res2["metrics"]["r_at_5"] == 0.5
+
+    res = score_trake(query, preds)
+    # The scores would be: 0.5, 0.0, 0.0, 1.0, 0.5
+    # Max in top 1: 0.5
+    # Max in top 5: 1.0
+    assert res["metrics"]["r_at_1"] == 0.5
+    assert res["metrics"]["r_at_5"] == 1.0

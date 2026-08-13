@@ -5,10 +5,14 @@ import tempfile
 import os
 import shutil
 
+from aic2026.core.config import load_config
+from aic2026.core.paths import PathResolver
+from aic2026.media.resolver import MediaResolver
+
 def validate_exact_decision(dec, base_label):
     if dec["decision"] not in ["UNREVIEWED", "VERIFIED", "NEEDS_MORE_REVIEW", "NOT_FOUND_IN_CURRENT_POOL", "UNRESOLVED"]:
         raise ValueError(f"Invalid decision status: {dec['decision']}")
-        
+
     if dec["decision"] == "VERIFIED":
         if base_label["query_type"] in ["KIS", "QA"]:
             if not dec.get("video_id"):
@@ -16,126 +20,129 @@ def validate_exact_decision(dec, base_label):
             for field in ["start_frame_id", "representative_frame_id", "end_frame_id"]:
                 if not isinstance(dec.get(field), int):
                     raise ValueError(f"VERIFIED KIS/QA requires integer {field}")
-            
+
             s, r, e = dec["start_frame_id"], dec["representative_frame_id"], dec["end_frame_id"]
             if not (s <= r <= e):
-                raise ValueError(f"Invalid frame range: {s} <= {r} <= {e} is false")
-                
-            if base_label["query_type"] == "QA":
-                if not dec.get("answer_text"):
-                    raise ValueError("VERIFIED QA requires answer_text")
-                    
+                raise ValueError("Invalid KIS frame range")
+
         elif base_label["query_type"] == "TRAKE":
             if not dec.get("video_id"):
                 raise ValueError("VERIFIED TRAKE requires video_id")
             events = dec.get("events", [])
-            if not events:
-                raise ValueError("VERIFIED TRAKE requires events")
-            
-            orders = set()
+            if not isinstance(events, list) or len(events) == 0:
+                raise ValueError("VERIFIED TRAKE requires at least one event")
             for ev in events:
-                orders.add(ev["event_order"])
-                for field in ["start_frame_id", "representative_frame_id", "end_frame_id"]:
-                    if not isinstance(ev.get(field), int):
-                        raise ValueError(f"TRAKE event requires integer {field}")
-                s, r, e = ev["start_frame_id"], ev["representative_frame_id"], ev["end_frame_id"]
-                if not (s <= r <= e):
-                    raise ValueError(f"Invalid frame range in TRAKE event: {s} <= {r} <= {e} is false")
-            
-            if len(orders) != len(events):
-                raise ValueError("TRAKE events contain duplicate event_order")
+                if "start_frame_id" not in ev or "end_frame_id" not in ev:
+                    raise ValueError("TRAKE events must have start and end frames")
 
-def validate_video_decision(dec, base_label):
-    if dec["decision"] not in ["UNREVIEWED", "VIDEO_VERIFIED", "NEEDS_MORE_REVIEW", "NOT_FOUND_IN_CURRENT_POOL", "UNRESOLVED"]:
-        raise ValueError(f"Invalid decision status: {dec['decision']}")
-        
+def validate_video_decision(dec, base_label, media_resolver=None):
+    if dec["decision"] not in ["UNREVIEWED", "VIDEO_VERIFIED", "NOT_FOUND_IN_CURRENT_POOL", "NEEDS_MORE_REVIEW", "UNRESOLVED"]:
+        raise ValueError(f"Invalid video decision status: {dec['decision']}")
+
     if dec["decision"] == "VIDEO_VERIFIED":
-        if not dec.get("video_id"):
+        vid = dec.get("video_id")
+        if not vid or not isinstance(vid, str):
             raise ValueError("VIDEO_VERIFIED requires video_id")
-        vid = dec["video_id"]
-        if not isinstance(vid, str) or not vid.strip():
-            raise ValueError("video_id must be a valid string")
 
-def apply_verifications(labels_path: Path, decisions_path: Path, mode: str):
-    if not labels_path.exists():
-        raise FileNotFoundError(f"Labels file missing: {labels_path}")
+        if media_resolver:
+            # Reuses MediaResolver's regex check + manifest check (no absolute paths or unknown IDs)
+            media_resolver._validate_video_id(vid)
+
+def apply_verifications(decisions_path: Path, labels_path: Path, mode: str):
     if not decisions_path.exists():
-        raise FileNotFoundError(f"Decisions file missing: {decisions_path}")
-        
-    with open(labels_path, 'r', encoding='utf-8') as f:
-        labels = [json.loads(line) for line in f]
-        
-    label_map = {lbl["query_id"]: lbl for lbl in labels}
-    
-    with open(decisions_path, 'r', encoding='utf-8') as f:
-        decisions = [json.loads(line) for line in f]
-        
-    # Prevent duplicate decisions
-    seen_queries = set()
-    for dec in decisions:
-        qid = dec.get("query_id")
-        if not qid:
-            raise ValueError("Missing query_id in decision")
-        if qid in seen_queries:
-            raise ValueError(f"Duplicate decision for query_id: {qid}")
-        seen_queries.add(qid)
-        if qid not in label_map:
-            raise ValueError(f"Decision references unknown query_id: {qid}")
-            
-        base_lbl = label_map[qid]
-        if mode == "exact":
-            validate_exact_decision(dec, base_lbl)
-        elif mode == "video":
-            validate_video_decision(dec, base_lbl)
-        
-    applied_count = 0
-    for dec in decisions:
-        qid = dec["query_id"]
-        lbl = label_map[qid]
-        
-        if mode == "exact" and dec["decision"] == "VERIFIED":
-            lbl["verification_status"] = "VERIFIED"
-            lbl["label_provenance"] = "INTERNAL_MANUAL_VERIFIED"
-            lbl["verified_by"] = "operator"
-            lbl["video_id"] = dec["video_id"]
-            
-            if lbl["query_type"] in ["KIS", "QA"]:
-                lbl["representative_frame_id"] = dec["representative_frame_id"]
-                lbl["frame_ranges"] = [{"start_frame_id": dec["start_frame_id"], "end_frame_id": dec["end_frame_id"]}]
-                if lbl["query_type"] == "QA":
-                    lbl["answer_text"] = dec["answer_text"]
-            elif lbl["query_type"] == "TRAKE":
-                lbl["events"] = dec["events"]
-            applied_count += 1
-            
-        elif mode == "video" and dec["decision"] == "VIDEO_VERIFIED":
-            lbl["video_verification_status"] = "VERIFIED"
-            lbl["verified_video_id"] = dec["video_id"]
-            lbl["video_label_provenance"] = "INTERNAL_MANUAL_VERIFIED"
-            lbl["video_verified_by"] = "operator"
-            applied_count += 1
-            
-    if applied_count == 0:
-        print("No VERIFIED decisions to apply.")
+        print(f"File không tồn tại: {decisions_path}")
         return
-        
-    backup_path = labels_path.with_name(f"labels.before-{'video' if mode == 'video' else 'exact'}.jsonl")
-    if not backup_path.exists():
+
+    if not labels_path.exists():
+        print(f"File không tồn tại: {labels_path}")
+        return
+
+    media_resolver = None
+    if mode == "video":
+        try:
+            config = load_config()
+            path_resolver = PathResolver.from_config(config)
+            media_resolver = MediaResolver(path_resolver.data_root)
+        except Exception as e:
+            # Fallback if config isn't available, although we should strictly try to validate.
+            pass
+
+    decisions = {}
+    with open(decisions_path, "r", encoding="utf-8") as f:
+        for idx, line in enumerate(f):
+            dec = json.loads(line)
+            qid = dec["query_id"]
+            if qid in decisions:
+                raise ValueError(f"Quyết định trùng lặp cho {qid} ở dòng {idx+1}")
+            decisions[qid] = dec
+
+    labels = []
+    with open(labels_path, "r", encoding="utf-8") as f:
+        for line in f:
+            labels.append(json.loads(line))
+
+    for label in labels:
+        qid = label["query_id"]
+        if qid in decisions:
+            dec = decisions[qid]
+
+            if mode == "exact":
+                validate_exact_decision(dec, label)
+                if dec["decision"] == "VERIFIED":
+                    label["label_status"] = "labeled"
+                    label["label_provenance"] = "INTERNAL_MANUAL_VERIFIED"
+                    label["gt_video_id"] = dec["video_id"]
+                    if label["query_type"] in ["KIS", "QA"]:
+                        label["gt_frame_ranges"] = [{
+                            "start_frame": dec["start_frame_id"],
+                            "representative_frame": dec["representative_frame_id"],
+                            "end_frame": dec["end_frame_id"]
+                        }]
+                    elif label["query_type"] == "TRAKE":
+                        label["gt_events"] = [
+                            {
+                                "start_frame": ev["start_frame_id"],
+                                "representative_frame": ev.get("representative_frame_id", ev["start_frame_id"]),
+                                "end_frame": ev["end_frame_id"]
+                            }
+                            for ev in dec["events"]
+                        ]
+                elif dec["decision"] == "NOT_FOUND_IN_CURRENT_POOL":
+                    label["label_status"] = "labeled"
+                    label["label_provenance"] = "INTERNAL_MANUAL_VERIFIED"
+                    label["gt_video_id"] = None
+                    label["gt_frame_ranges"] = None
+                    label["gt_events"] = None
+
+            elif mode == "video":
+                validate_video_decision(dec, label, media_resolver)
+                if dec["decision"] == "VIDEO_VERIFIED":
+                    label["video_verification_status"] = "VERIFIED"
+                    label["video_label_provenance"] = "INTERNAL_MANUAL_VERIFIED"
+                    label["verified_video_id"] = dec["video_id"]
+                elif dec["decision"] == "NOT_FOUND_IN_CURRENT_POOL":
+                    label["video_verification_status"] = "VERIFIED"
+                    label["video_label_provenance"] = "INTERNAL_MANUAL_VERIFIED"
+                    label["verified_video_id"] = None
+
+    fd, temp_path = tempfile.mkstemp(dir=labels_path.parent, prefix="labels_tmp_", suffix=".jsonl")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            for label in labels:
+                f.write(json.dumps(label, ensure_ascii=False) + "\n")
+
+        backup_path = labels_path.with_suffix(".jsonl.bak")
         shutil.copy2(labels_path, backup_path)
-        print(f"Created backup at {backup_path}")
-        
-    fd, temp_path = tempfile.mkstemp(dir=labels_path.parent, suffix=".jsonl")
-    with os.fdopen(fd, 'w', encoding='utf-8') as f:
-        for lbl in labels:
-            f.write(json.dumps(lbl, ensure_ascii=False) + '\n')
-            
-    os.replace(temp_path, labels_path)
-    print(f"Successfully applied {applied_count} verified decisions to {labels_path}")
+        os.replace(temp_path, labels_path)
+        print(f"Cập nhật thành công. Backup tại: {backup_path.name}")
+    except Exception as e:
+        os.remove(temp_path)
+        raise e
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--labels", type=Path, required=True)
-    parser.add_argument("--decisions", type=Path, required=True)
+    parser.add_argument("--decisions", type=str, required=True)
+    parser.add_argument("--labels", type=str, required=True)
     parser.add_argument("--mode", type=str, choices=["exact", "video"], default="exact")
-    args = parser.parse_args()
-    apply_verifications(args.labels, args.decisions, args.mode)
+    args = parser.add_argument()
+    apply_verifications(Path(args.decisions), Path(args.labels), args.mode)

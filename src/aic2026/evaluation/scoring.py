@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any
@@ -102,21 +102,58 @@ def score_kis(query: dict[str, Any], predictions: list[dict[str, Any]]) -> dict[
     return {"status": "SCORED", "first_correct_rank": first_correct_rank, "metrics": metrics}
 
 
+def validate_trake_predictions(predictions: Any, expected_n_events: int) -> list[dict[str, Any]]:
+    if not isinstance(predictions, list):
+        raise EvalContractError("predictions phải là một danh sách")
+    if len(predictions) > 100:
+        raise EvalContractError("Mỗi query chỉ được có tối đa 100 predictions")
+    normalized: list[dict[str, Any]] = []
+    seen: set[tuple[Any, ...]] = set()
+    for index, item in enumerate(predictions):
+        if not isinstance(item, dict):
+            raise EvalContractError(f"Prediction rank {index + 1} không phải object")
+        video_id = item.get("video_id")
+        if not isinstance(video_id, str) or not video_id:
+            raise EvalContractError(f"Prediction rank {index + 1} thiếu video_id hợp lệ")
+
+        frame_ids = item.get("frame_ids")
+        if not isinstance(frame_ids, list) or not frame_ids:
+            raise EvalContractError(f"Prediction rank {index + 1} thiếu frame_ids hợp lệ")
+
+        if len(frame_ids) != expected_n_events:
+            raise EvalContractError(f"Prediction rank {index + 1} có số lượng frame_ids ({len(frame_ids)}) không khớp với số events ({expected_n_events})")
+
+        for f_idx in frame_ids:
+            if type(f_idx) is not int or f_idx < 0:
+                raise EvalContractError(f"Prediction rank {index + 1} có frame_idx không hợp lệ: {f_idx}")
+
+        # Identity can be video_id + tuple of frame_ids
+        identity = ("trake", video_id, tuple(frame_ids))
+        if identity in seen:
+            raise EvalContractError(f"Prediction trùng lặp tại rank {index + 1}")
+        seen.add(identity)
+        normalized.append(dict(item, rank=index + 1))
+    return normalized
+
+
 def score_trake(query: dict[str, Any], predictions: list[dict[str, Any]]) -> dict[str, Any]:
-    candidates = validate_predictions(predictions)
     gt_video_id = query.get("gt_video_id")
     gt_events: list[dict[str, Any]] = query.get("gt_events") or []
     n_events = len(gt_events)
+
+    candidates = validate_trake_predictions(predictions, n_events)
 
     def r_score_for_candidate(candidate: dict[str, Any]) -> float:
         if candidate["video_id"] != gt_video_id:
             return 0.0
         if n_events == 0:
             return 0.0
+
+        frame_ids = candidate["frame_ids"]
         matched = sum(
             1
-            for event in gt_events
-            if event["start_frame"] <= candidate["frame_idx"] <= event["end_frame"]
+            for j in range(n_events)
+            if gt_events[j]["start_frame"] <= frame_ids[j] <= gt_events[j]["end_frame"]
         )
         return matched / n_events
 
