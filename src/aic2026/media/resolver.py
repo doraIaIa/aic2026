@@ -226,6 +226,25 @@ class MediaResolver:
         pts_sec = _frame_id_to_pts(path, frame_id, meta)
         return path, pts_sec
 
+    def keyframe_path(self, video_id: str, csv_n: int) -> Path:
+        """Resolve a canonical extracted keyframe by its 1-based CSV ordinal.
+
+        This endpoint is for retrieval thumbnails only.  `csv_n` is never a
+        video frame index and is deliberately kept separate from the physical
+        decoded frame workflow used for candidate selection.
+        """
+        if not isinstance(csv_n, int) or csv_n < 1:
+            raise InvalidRequestError("csv_n must be a positive 1-based ordinal")
+        self._resolve_path(video_id)  # validates availability, manifest, and video id
+        candidate = self._media_root / "data_extracted" / "keyframes" / video_id / f"{csv_n:03d}.jpg"
+        try:
+            candidate.resolve().relative_to(self._media_root.resolve())
+        except ValueError as exc:
+            raise InvalidRequestError("Resolved keyframe path escapes media_root") from exc
+        if not candidate.is_file():
+            raise VideoNotFoundError(f"Keyframe ordinal not found for video_id={video_id}: {csv_n}")
+        return candidate
+
     def video_path_for_streaming(self, video_id: str) -> Path:
         """Internal only – returns path for streaming; caller must not expose this."""
         return self._resolve_path(video_id)

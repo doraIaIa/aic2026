@@ -32,8 +32,8 @@ def search_asr(
 ) -> list[dict[str, Any]]:
     if not isinstance(query, str) or not query.strip():
         raise AsrSearchError("Query must be a non-empty string")
-    if limit <= 0 or limit > 100:
-        raise AsrSearchError("limit must be between 1 and 100")
+    if limit <= 0 or limit > 300:
+        raise AsrSearchError("limit must be between 1 and 300")
     db_path = Path(database)
     if not db_path.is_file():
         raise AsrSearchError(f"Database not found: {db_path}")

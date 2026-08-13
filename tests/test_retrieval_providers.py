@@ -90,8 +90,21 @@ def test_asr_provider_typed_output_no_diacritic_and_phrase(tmp_path: Path):
 
 
 def test_asr_product_query_treats_raw_fts_as_literals(tmp_path: Path):
-    provider = AsrProvider(_asr_database(tmp_path / "aic.sqlite"))
+    provider = AsrProvider(_asr_database(tmp_path / "aic.sqlite"), strategy="strict_and_v1")
     assert provider.search(ProviderQuery("thành OR phố*")) == []
+
+
+def test_asr_relaxed_strategy_returns_hits(tmp_path: Path):
+    provider = AsrProvider(_asr_database(tmp_path / "aic.sqlite"), strategy="relaxed_v1")
+    # relaxed_v1 should OR-join tokens, so "thành" alone should match
+    hits = provider.search(ProviderQuery("thành OR phố*"))
+    assert len(hits) > 0
+    assert hits[0].payload["asr_strategy"] == "relaxed_v1"
+
+
+def test_asr_provider_rejects_unknown_strategy(tmp_path: Path):
+    with pytest.raises(ValueError, match="ASR strategy"):
+        AsrProvider(_asr_database(tmp_path / "aic.sqlite"), strategy="unknown")
 
 
 def test_visual_provider_mapping_stable_ids_top_k_and_cache(tmp_path: Path):
@@ -117,8 +130,8 @@ def test_visual_provider_mapping_stable_ids_top_k_and_cache(tmp_path: Path):
     assert second[1].payload["frame_idx"] == 75
     assert second[1].payload["keyframe_relpath"].endswith("/002.jpg")
     assert second[0].score_kind == "cosine_ip_higher_is_better"
-    with pytest.raises(ValueError, match="1..100"):
-        ProviderQuery("x", top_k=101)
+    with pytest.raises(ValueError, match="1..300"):
+        ProviderQuery("x", top_k=301)
 
 
 def test_visual_encoding_and_faiss_search_are_serialized(tmp_path: Path):

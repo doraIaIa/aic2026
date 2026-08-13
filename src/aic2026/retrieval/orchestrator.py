@@ -18,8 +18,8 @@ class OrchestratorConfig:
     max_workers: int = 2
 
     def __post_init__(self) -> None:
-        if not 1 <= self.per_lane_top_k <= 100:
-            raise ValueError("per_lane_top_k phải nằm trong 1..100")
+        if not 1 <= self.per_lane_top_k <= 300:
+            raise ValueError("per_lane_top_k phải nằm trong 1..300")
         if self.provider_timeout_sec <= 0 or not 1 <= self.max_workers <= 4:
             raise ValueError("timeout/max_workers không hợp lệ")
 

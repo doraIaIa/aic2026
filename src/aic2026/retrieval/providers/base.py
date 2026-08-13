@@ -29,8 +29,8 @@ class ProviderQuery:
     def __post_init__(self) -> None:
         if not isinstance(self.query_text, str) or not self.query_text.strip():
             raise ValueError("query_text phải là chuỗi không rỗng")
-        if type(self.top_k) is not int or not 1 <= self.top_k <= 100:
-            raise ValueError("top_k phải nằm trong 1..100")
+        if type(self.top_k) is not int or not 1 <= self.top_k <= 300:
+            raise ValueError("top_k phải nằm trong 1..300")
         if len(self.video_ids) != len(set(self.video_ids)):
             raise ValueError("video_ids không được trùng")
 

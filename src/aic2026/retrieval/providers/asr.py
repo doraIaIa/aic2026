@@ -7,7 +7,7 @@ from pathlib import Path
 
 from aic2026.core.hashing import sha256_file
 from aic2026.core.paths import PathContractError, normalize_relpath
-from aic2026.retrieval.contract import compile_product_fts_query
+from aic2026.retrieval.contract import ASR_STRATEGIES, DEFAULT_ASR_STRATEGY, compile_fts_query
 from aic2026.retrieval.providers.base import (
     ProviderCapability,
     ProviderHit,
@@ -23,9 +23,12 @@ class AsrProvider:
 
     name = "asr"
 
-    def __init__(self, database: str | Path, *, artifact_version: str = "asr-fts5-full-v1") -> None:
+    def __init__(self, database: str | Path, *, artifact_version: str = "asr-fts5-full-v1", strategy: str = DEFAULT_ASR_STRATEGY) -> None:
         self.database = Path(database)
         self.artifact_version = artifact_version
+        if strategy not in ASR_STRATEGIES:
+            raise ValueError(f"ASR strategy không hợp lệ: {strategy}")
+        self.strategy = strategy
         self._lock = threading.RLock()
         self._capability: ProviderCapability | None = None
 
@@ -61,7 +64,7 @@ class AsrProvider:
         capability = self.capabilities()
         if capability.status != "OK":
             raise ProviderUnavailableError(capability.reason or capability.status)
-        compiled = compile_product_fts_query(query.query_text)
+        compiled = compile_fts_query(query.query_text, strategy=self.strategy)
         try:
             rows = search_asr(self.database, compiled, limit=query.top_k, video_ids=query.video_ids)
         except AsrSearchError as exc:
@@ -79,7 +82,7 @@ class AsrProvider:
                 rank=int(row["rank"]), start_sec=start, end_sec=end, anchor_sec=(start + end) / 2,
                 raw_score=float(row["score"]), score_kind="bm25_lower_is_better",
                 artifact_version=self.artifact_version, source_video_relpath=relpath,
-                payload={"segment_id": row["segment_id"], "text": row["text"], "language": row.get("language"), "model": row.get("model")},
-                provenance={"database_sha256": capability.checksums["database_sha256"], "query_policy": "retrieval-policy-v1"},
+                payload={"segment_id": row["segment_id"], "text": row["text"], "language": row.get("language"), "model": row.get("model"), "asr_strategy": self.strategy},
+                provenance={"database_sha256": capability.checksums["database_sha256"], "query_policy": "retrieval-policy-v1", "asr_strategy": self.strategy},
             ))
         return hits

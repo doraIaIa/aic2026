@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from aic2026.retrieval.contract import CONTRACT_VERSION, POLICY_VERSION, media_capability
+from aic2026.retrieval.contract import CONTRACT_VERSION, POLICY_VERSION, DEFAULT_ASR_STRATEGY, ASR_STRATEGIES, media_capability
 from aic2026.retrieval.providers.base import ProviderCapability, SearchProvider
 
 
@@ -37,4 +37,9 @@ class CapabilityService:
             "policy_version": POLICY_VERSION,
             "providers": states,
             "media": media_capability(self.media_root),
+            "asr_strategy": {
+                "active": getattr(self.providers.get("asr"), "strategy", DEFAULT_ASR_STRATEGY),
+                "available": list(ASR_STRATEGIES),
+                "default": DEFAULT_ASR_STRATEGY,
+            },
         }

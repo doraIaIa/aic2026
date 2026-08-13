@@ -4,6 +4,7 @@ Adds four endpoints to the existing BaseHTTPRequestHandler-based API:
   GET /api/v1/media/{video_id}/info
   GET /api/v1/media/{video_id}/stream
   GET /api/v1/media/{video_id}/frames/{frame_id}
+  GET /api/v1/media/{video_id}/keyframes/{csv_n}
   GET /api/v1/media/{video_id}/resolve-frame?time_sec=...
 
 Security invariants:
@@ -34,6 +35,7 @@ from aic2026.media.resolver import (
 _INFO_RE = re.compile(r"^/api/v1/media/([^/]+)/info$")
 _STREAM_RE = re.compile(r"^/api/v1/media/([^/]+)/stream$")
 _FRAME_RE = re.compile(r"^/api/v1/media/([^/]+)/frames/(\d+)$")
+_KEYFRAME_RE = re.compile(r"^/api/v1/media/([^/]+)/keyframes/(\d+)$")
 _RESOLVE_RE = re.compile(r"^/api/v1/media/([^/]+)/resolve-frame$")
 
 
@@ -124,6 +126,23 @@ def handle_media_get(
         except DecodeError as exc:
             return _json_error(HTTPStatus.INTERNAL_SERVER_ERROR, f"DECODE_ERROR: {exc}")
         return HTTPStatus.OK, jpeg_bytes, "image/jpeg"
+
+    # --- /keyframes/{csv_n} ---
+    # This intentionally uses CSV.n / keyframe ordinal, never frame_idx.
+    m = _KEYFRAME_RE.match(parsed_path)
+    if m:
+        video_id, ordinal_raw = m.group(1), m.group(2)
+        try:
+            keyframe_path = resolver.keyframe_path(video_id, int(ordinal_raw))
+            return HTTPStatus.OK, keyframe_path.read_bytes(), "image/jpeg"
+        except MediaUnavailableError as exc:
+            return _json_error(HTTPStatus.SERVICE_UNAVAILABLE, str(exc))
+        except VideoNotFoundError as exc:
+            return _json_error(HTTPStatus.NOT_FOUND, str(exc))
+        except InvalidRequestError as exc:
+            return _json_error(HTTPStatus.BAD_REQUEST, str(exc))
+        except OSError as exc:
+            return _json_error(HTTPStatus.INTERNAL_SERVER_ERROR, f"KEYFRAME_READ_ERROR: {exc}")
 
     # --- /stream ---
     m = _STREAM_RE.match(parsed_path)

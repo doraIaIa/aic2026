@@ -120,9 +120,9 @@ def test_asr_search_api_health_search_filter_and_validation(tmp_path: Path) -> N
         assert status == 400
         assert payload["status"] == "ERROR"
 
-        status, payload = _get_json(f"{base_url}/api/asr/search?q=test&limit=101")
+        status, payload = _get_json(f"{base_url}/api/asr/search?q=test&limit=301")
         assert status == 400
-        assert "between 1 and 100" in payload["error"]
+        assert "between 1 and 300" in payload["error"]
     finally:
         server.shutdown()
         server.server_close()

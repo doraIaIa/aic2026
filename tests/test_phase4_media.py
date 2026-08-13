@@ -215,6 +215,15 @@ class TestResolveFrame:
             with pytest.raises(FrameOutOfRangeError):
                 resolver.resolve_frame_from_time("L01_V001", 9999.0)
 
+    def test_keyframe_ordinal_is_not_frame_idx(self, tmp_path):
+        resolver, _ = _make_resolver(tmp_path)
+        keyframe = tmp_path / "data_extracted" / "keyframes" / "L01_V001" / "002.jpg"
+        keyframe.parent.mkdir(parents=True)
+        keyframe.write_bytes(b"JPEG_ORDINAL_2")
+        assert resolver.keyframe_path("L01_V001", 2) == keyframe
+        with pytest.raises(InvalidRequestError):
+            resolver.keyframe_path("L01_V001", 0)
+
 
 # ---------------------------------------------------------------------------
 # API handler – path matching & error codes
@@ -261,6 +270,16 @@ class TestApiHandler:
     def test_no_resolver_returns_none(self):
         result = handle_media_get("/api/v1/media/L01_V001/info", "", None, None)
         assert result is None
+
+    def test_keyframe_thumbnail_endpoint_uses_csv_ordinal(self, tmp_path):
+        resolver, _ = _make_resolver(tmp_path)
+        keyframe = tmp_path / "data_extracted" / "keyframes" / "L01_V001" / "002.jpg"
+        keyframe.parent.mkdir(parents=True)
+        keyframe.write_bytes(b"JPEG_ORDINAL_2")
+        result = handle_media_get("/api/v1/media/L01_V001/keyframes/2", "", None, resolver)
+        assert result is not None
+        status, body, content_type = result
+        assert status == HTTPStatus.OK and body == b"JPEG_ORDINAL_2" and content_type == "image/jpeg"
 
 
 # ---------------------------------------------------------------------------

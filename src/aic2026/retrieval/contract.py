@@ -21,11 +21,56 @@ class RetrievalContractError(ValueError):
     """Payload retrieval vi phạm contract v1."""
 
 
-def compile_product_fts_query(query: str) -> str:
-    """Biên dịch query UI thành FTS literal/all-token, giữ phrase có ngoặc kép."""
+ASR_STRATEGIES = ("strict_and_v1", "relaxed_v1")
+DEFAULT_ASR_STRATEGY = "relaxed_v1"
+EVAL_ASR_STRATEGY = "strict_and_v1"
+
+# Vietnamese query boilerplate / stop words — low-value scaffolding tokens
+_VIETNAMESE_STOPWORDS = frozenset({
+    "đoạn", "video", "hình", "ảnh", "cảnh", "cho", "biết", "hỏi",
+    "trong", "có", "là", "một", "của", "và", "các", "những",
+    "này", "đó", "được", "với", "về", "từ", "đến", "hay",
+    "hoặc", "nào", "gì", "bao", "nhiêu", "thì", "rằng", "nếu",
+    "đây", "đã", "đang", "sẽ", "vẫn", "còn", "rất", "quá",
+    "cũng", "nhưng", "mà", "tuy", "vì", "nên", "phải",
+    "không", "chưa", "bị", "chỉ", "lại", "ra", "lên", "xuống",
+    "vào", "để", "theo", "trên", "dưới", "sau", "trước",
+    "khi", "thấy", "đầu", "tiên", "cuối", "cùng",
+    "kế", "tiếp", "ở", "tại", "qua",
+})
+
+
+def _extract_tokens(value: str) -> tuple[list[str], list[str]]:
+    """Extract quoted phrases and individual word tokens from a query string.
+
+    Returns (phrases, tokens) where phrases are "quoted" substrings
+    and tokens are individual words from the remaining text.
+    """
+    phrases: list[str] = []
+    tokens: list[str] = []
+    for match in re.finditer(r'"([^"\r\n]+)"|([^\s"]+)', value):
+        phrase, token = match.groups()
+        if phrase is not None:
+            normalized = " ".join(phrase.split())
+            if normalized:
+                phrases.append(normalized)
+            continue
+        for literal in re.findall(r"\w+", token, flags=re.UNICODE):
+            tokens.append(literal)
+    return phrases, tokens
+
+
+def compile_strict_and_fts_query(query: str) -> str:
+    """strict_and_v1: every token AND-joined, quoted phrases preserved.
+
+    This is the original evaluation baseline strategy.
+    """
     value = _string(query, "query_text")
     if value.count('"') % 2:
         raise RetrievalContractError("Query phrase thiếu dấu ngoặc kép đóng")
+    # Keep the historical source-order semantics exactly.  In particular, a
+    # quoted phrase stays where the operator placed it instead of being moved
+    # before all individual tokens.
     terms: list[str] = []
     for match in re.finditer(r'"([^"\r\n]+)"|([^\s"]+)', value):
         phrase, token = match.groups()
@@ -39,6 +84,56 @@ def compile_product_fts_query(query: str) -> str:
     if not terms:
         raise RetrievalContractError("Query không có token literal hợp lệ")
     return " AND ".join(terms)
+
+
+# Backward-compatible alias — existing code uses this name
+compile_product_fts_query = compile_strict_and_fts_query
+
+
+def compile_relaxed_fts_query(query: str, *, max_tokens: int = 12) -> str:
+    """relaxed_v1: OR-based with stopword removal and phrase boosting.
+
+    Deterministic, no LLM. Designed for product natural-language queries.
+
+    Strategy:
+    1. Extract quoted phrases verbatim.
+    2. Extract word tokens and remove generic Vietnamese scaffolding.
+    3. Detect potential multi-word named entities (consecutive capitalized/
+       proper-noun-like tokens) — not implemented for simplicity; rely on
+       user quotes for now.
+    4. Build: phrase matches OR content tokens, capped at max_tokens.
+    """
+    value = _string(query, "query_text")
+    if value.count('"') % 2:
+        raise RetrievalContractError("Query phrase thiếu dấu ngoặc kép đóng")
+    phrases, raw_tokens = _extract_tokens(value)
+
+    # Remove stopwords from individual tokens
+    content_tokens = [t for t in raw_tokens if t.lower() not in _VIETNAMESE_STOPWORDS]
+
+    # Cap tokens to prevent query explosion
+    content_tokens = content_tokens[:max_tokens]
+
+    if not content_tokens and not phrases:
+        raise RetrievalContractError("Query không có token literal hợp lệ")
+
+    # Build OR expression: phrases get priority, then individual tokens
+    terms: list[str] = []
+    for p in phrases:
+        terms.append(f'"{p}"')
+    for t in content_tokens:
+        terms.append(f'"{t}"')
+
+    return " OR ".join(terms)
+
+
+def compile_fts_query(query: str, *, strategy: str = DEFAULT_ASR_STRATEGY) -> str:
+    """Dispatch FTS query compilation to the named strategy."""
+    if strategy == "strict_and_v1":
+        return compile_strict_and_fts_query(query)
+    if strategy == "relaxed_v1":
+        return compile_relaxed_fts_query(query)
+    raise RetrievalContractError(f"ASR strategy không hợp lệ: {strategy}")
 
 
 def load_contract_schema() -> dict[str, Any]:
