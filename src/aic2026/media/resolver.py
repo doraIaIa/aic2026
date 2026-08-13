@@ -332,16 +332,25 @@ def _frame_id_to_pts(path: Path, frame_id: int, meta: VideoMeta) -> float:
 
 
 def decode_frame_jpeg(path: Path, frame_id: int, meta: VideoMeta) -> bytes:
-    """Decode frame_id to JPEG bytes using ffmpeg.
+    """Decode frame_id to JPEG bytes using exact timeline decoding.
     
-    Seeks using PTS-based timestamp to avoid decoding entire video.
+    Instead of using `-ss {pts}` which is approximate due to keyframe snapping,
+    this uses a hybrid approach:
+    1. Fast coarse seek to `pts - 5` seconds using `-ss` before `-i`.
+    2. `-copyts` to preserve absolute timestamps.
+    3. `select='gte(t,{pts - 0.001})'` to decode exactly the requested frame.
     """
-    pts_sec = _frame_id_to_pts(path, frame_id, meta)
+    target_pts = _frame_id_to_pts(path, frame_id, meta)
+    seek_pts = max(0.0, target_pts - 5.0)
+    
     cmd = [
         "ffmpeg",
         "-v", "error",
-        "-ss", f"{pts_sec:.6f}",
+        "-ss", f"{seek_pts:.6f}",
         "-i", str(path),
+        "-copyts",
+        "-vf", f"select='gte(t,{target_pts - 0.001})'",
+        "-vsync", "vfr",
         "-vframes", "1",
         "-f", "image2",
         "-vcodec", "mjpeg",
