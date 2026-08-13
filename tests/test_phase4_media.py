@@ -198,11 +198,11 @@ class TestResolveFrame:
             with patch("aic2026.media.resolver._resolve_frame_at_time") as mock_resolve:
                 from aic2026.media.resolver import FrameResolveResult
                 mock_resolve.return_value = FrameResolveResult(
-                    video_id="L01_V001", requested_time_sec=0.0, frame_id=0, pts_time_sec=0.0
+                    video_id="L01_V001", requested_time_sec=0.0, decoded_frame_ordinal=0, decoded_pts_sec=0.0, competition_frame_id=0, mapping_method="deterministic_int_truncation"
                 )
                 result = resolver.resolve_frame_from_time("L01_V001", 0.0)
-        assert result.frame_id == 0
-        assert result.requested_time_sec == 0.0
+        assert result.decoded_frame_ordinal == 0
+        assert result.competition_frame_id == 0
 
     def test_negative_time_rejected(self, tmp_path):
         resolver, _ = _make_resolver(tmp_path)

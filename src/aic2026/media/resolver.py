@@ -89,22 +89,24 @@ class VideoMeta:
 # ---------------------------------------------------------------------------
 
 class FrameResolveResult:
-    __slots__ = ("video_id", "requested_time_sec", "frame_id", "pts_time_sec", "delta_sec")
+    __slots__ = ("video_id", "requested_time_sec", "decoded_frame_ordinal", "decoded_pts_sec", "competition_frame_id", "mapping_method")
 
-    def __init__(self, *, video_id: str, requested_time_sec: float, frame_id: int, pts_time_sec: float) -> None:
+    def __init__(self, *, video_id: str, requested_time_sec: float, decoded_frame_ordinal: int, decoded_pts_sec: float, competition_frame_id: int, mapping_method: str) -> None:
         self.video_id = video_id
         self.requested_time_sec = requested_time_sec
-        self.frame_id = frame_id
-        self.pts_time_sec = pts_time_sec
-        self.delta_sec = round(pts_time_sec - requested_time_sec, 6)
+        self.decoded_frame_ordinal = decoded_frame_ordinal
+        self.decoded_pts_sec = decoded_pts_sec
+        self.competition_frame_id = competition_frame_id
+        self.mapping_method = mapping_method
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "video_id": self.video_id,
             "requested_time_sec": self.requested_time_sec,
-            "frame_id": self.frame_id,
-            "pts_time_sec": self.pts_time_sec,
-            "delta_sec": self.delta_sec,
+            "decoded_frame_ordinal": self.decoded_frame_ordinal,
+            "decoded_pts_sec": self.decoded_pts_sec,
+            "competition_frame_id": self.competition_frame_id,
+            "mapping_method": self.mapping_method,
         }
 
 
@@ -305,22 +307,27 @@ def _ffprobe_video_meta(video_id: str, path: Path) -> VideoMeta:
 def _resolve_frame_at_time(
     video_id: str, path: Path, time_sec: float, meta: VideoMeta
 ) -> FrameResolveResult:
-    """Convert time_sec to frame_id using video FPS.
-
-    For CFR video (confirmed by ffprobe r_frame_rate), frame_id = round(time_sec * fps).
-    We expose fps in VideoMeta so the authority is clear; the contract note in VideoMeta
-    states this is fps-based and accurate for CFR. VFR videos would need per-frame PTS
-    enumeration which is left as a future enhancement.
-    """
-    # fps-based estimate (authority for CFR video as confirmed by ffprobe)
+    """Convert time_sec to a resolved dual-identity frame."""
+    from aic2026.media.mapper import FrameIdentityMapper
+    
     fps = meta.fps if meta.fps > 0 else 25.0
-    frame_id = max(0, min(meta.frame_count - 1, round(time_sec * fps)))
-    pts_sec = round(frame_id / fps, 6)
+    
+    identity = FrameIdentityMapper.resolve_and_map(video_id, time_sec, fps)
+    
+    # Clamp bounds for physical ordinal
+    clamped_ordinal = max(0, min(meta.frame_count - 1, identity.decoded_frame_ordinal))
+    if clamped_ordinal != identity.decoded_frame_ordinal:
+        # Re-map if it was clamped
+        time_clamped = clamped_ordinal / fps
+        identity = FrameIdentityMapper.resolve_and_map(video_id, time_clamped, fps)
+        
     return FrameResolveResult(
         video_id=video_id,
         requested_time_sec=time_sec,
-        frame_id=frame_id,
-        pts_time_sec=pts_sec,
+        decoded_frame_ordinal=identity.decoded_frame_ordinal,
+        decoded_pts_sec=identity.decoded_pts_sec,
+        competition_frame_id=identity.competition_frame_id,
+        mapping_method=identity.mapping_method,
     )
 
 
