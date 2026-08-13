@@ -117,7 +117,7 @@ def validate_trake_predictions(predictions: Any, expected_n_events: int) -> list
             raise EvalContractError(f"Prediction rank {index + 1} thiếu video_id hợp lệ")
 
         frame_ids = item.get("frame_ids")
-        if not isinstance(frame_ids, list) or not frame_ids:
+        if not isinstance(frame_ids, list) or (not frame_ids and expected_n_events > 0):
             raise EvalContractError(f"Prediction rank {index + 1} thiếu frame_ids hợp lệ")
 
         if len(frame_ids) != expected_n_events:
@@ -194,13 +194,12 @@ SCORER_REGISTRY: dict[str, Callable[[dict[str, Any], list[dict[str, Any]]], dict
 
 
 def score_query(query: dict[str, Any], predictions: list[dict[str, Any]]) -> dict[str, Any]:
-    candidates = validate_predictions(predictions)
     if query.get("label_status") == "unlabeled_reference":
         return {"status": "UNLABELED", "first_correct_rank": None, "metrics": None}
     scorer = SCORER_REGISTRY.get(query["query_type"])
     if scorer is None:
         raise EvalContractError(f"Không có scorer cho query_type={query['query_type']}")
-    return scorer(query, candidates)
+    return scorer(query, predictions)
 
 
 def aggregate_scores(records: list[dict[str, Any]], *, split: str) -> dict[str, Any]:

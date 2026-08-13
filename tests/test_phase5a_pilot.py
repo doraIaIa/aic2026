@@ -48,6 +48,8 @@ class MockMediaResolver:
     def _validate_video_id(self, video_id: str):
         if not video_id or ".." in video_id or video_id.startswith("/"):
             raise ValueError("Invalid format")
+    def is_available(self, video_id: str):
+        return True
 
 def test_validate_video_decision_with_resolver():
     base_label = {"query_type": "KIS"}
@@ -60,4 +62,3 @@ def test_validate_video_decision_with_resolver():
         validate_video_decision({"decision": "VIDEO_VERIFIED", "video_id": "/absolute/path"}, base_label, resolver)
 
     validate_video_decision({"decision": "VIDEO_VERIFIED", "video_id": "L01_V001"}, base_label, resolver)
-

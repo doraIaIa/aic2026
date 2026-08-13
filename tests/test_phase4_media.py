@@ -287,3 +287,107 @@ def _trake_query(**overrides):
     }
     query.update(overrides)
     return query
+
+
+def _cand(rank, *, video_id="V1", frame_ids=None):
+    if frame_ids is None:
+        frame_ids = [15, 55, 105]
+    return {"embedding_id": rank, "video_id": video_id, "frame_ids": frame_ids}
+
+class TestTrakeScorer:
+    def test_wrong_video_r_score_is_zero(self):
+        result = score_trake(_trake_query(), [_cand(1, video_id="WRONG")])
+        for k in CUTOFFS:
+            assert result["metrics"][f"r_at_{k}"] == 0.0
+        assert result["first_correct_rank"] is None
+
+    def test_all_events_matched_score_1(self):
+        # 3 events, cand hits all 3 correctly
+        result = score_trake(
+            _trake_query(),
+            [
+                _cand(1, frame_ids=[15, 55, 105]),
+            ]
+        )
+        assert abs(result["metrics"]["r_at_1"] - 1.0) < 1e-9
+
+    def test_boundary_frames_inclusive(self):
+        result = score_trake(_trake_query(), [_cand(1, frame_ids=[10, 60, 110])])
+        assert result["metrics"]["r_at_1"] > 0.0
+
+    def test_zero_events_returns_zero(self):
+        result = score_trake(_trake_query(gt_events=[]), [_cand(1, frame_ids=[])])
+        assert result["metrics"]["r_at_1"] == 0.0
+
+    def test_r_at_k_is_max_not_mean(self):
+        candidates = [
+            _cand(1, video_id="WRONG", frame_ids=[999, 999, 999]),
+            _cand(2, frame_ids=[15, 0, 0]),
+        ]
+        result = score_trake(_trake_query(), candidates)
+        assert result["metrics"]["r_at_1"] == 0.0
+        assert abs(result["metrics"]["r_at_5"] - 1 / 3) < 1e-9
+
+    def test_final_score_is_mean_of_r_at_k(self):
+        result = score_trake(_trake_query(), [_cand(1, frame_ids=[15, 55, 105])])
+        final = result["trake_final_score"]
+        expected = sum(result["metrics"][f"r_at_{k}"] for k in CUTOFFS) / len(CUTOFFS)
+        assert abs(final - expected) < 1e-12
+
+    def test_trake_now_scored_not_blocked(self):
+        result = score_query(_trake_query(), [_cand(1, frame_ids=[15, 55, 105])])
+        assert result["status"] == "SCORED"
+        assert result["status"] != BLOCKED_BY_SCORING_CONTRACT
+
+    def test_qa_still_blocked(self):
+        qa_query = _trake_query(query_type="QA")
+        result = score_query(qa_query, [{'embedding_id': 1, 'video_id': 'V1', 'frame_idx': 15}])
+        assert result["status"] == BLOCKED_BY_SCORING_CONTRACT
+
+# ---------------------------------------------------------------------------
+# Streaming – range tests
+# ---------------------------------------------------------------------------
+
+class TestStreamRange:
+    def test_range_request_handled(self, tmp_path):
+        resolver, stub = _make_resolver(tmp_path)
+        stub.write_bytes(b"A" * 1000)
+        result = handle_media_get(
+            "/api/v1/media/L01_V001/stream", "", "bytes=0-99", resolver
+        )
+        assert result is not None
+        status, body, _ = result
+        assert status == HTTPStatus.PARTIAL_CONTENT
+        assert len(body) == 100
+
+    def test_invalid_range_returns_error(self, tmp_path):
+        resolver, stub = _make_resolver(tmp_path)
+        stub.write_bytes(b"A" * 100)
+        result = handle_media_get(
+            "/api/v1/media/L01_V001/stream", "", "bytes=9999-10000", resolver
+        )
+        assert result is not None
+        status, _, _ = result
+        assert status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE
+
+    def test_full_stream_no_range(self, tmp_path):
+        resolver, stub = _make_resolver(tmp_path)
+        stub.write_bytes(b"B" * 500)
+        result = handle_media_get(
+            "/api/v1/media/L01_V001/stream", "", None, resolver
+        )
+        assert result is not None
+        status, body, _ = result
+        assert status == HTTPStatus.OK
+        assert len(body) == 500
+
+
+# ---------------------------------------------------------------------------
+# Existing retrieval regression guard
+# ---------------------------------------------------------------------------
+
+def test_existing_tests_not_regressed():
+    """Smoke guard: import retrieval contract without error."""
+    from aic2026.retrieval.contract import CONTRACT_VERSION, POLICY_VERSION
+    assert CONTRACT_VERSION == "retrieval.v1"
+    assert POLICY_VERSION == "retrieval-policy-v1"
