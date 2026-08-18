@@ -43,6 +43,49 @@ CREATE TABLE IF NOT EXISTS videos (
 CREATE INDEX IF NOT EXISTS idx_videos_ordinal ON videos(ordinal);
 CREATE INDEX IF NOT EXISTS idx_videos_series ON videos(series);
 
+CREATE TABLE IF NOT EXISTS custom_keyframes (
+    keyframe_uid TEXT PRIMARY KEY,
+    video_id TEXT NOT NULL REFERENCES videos(video_id),
+    video_ordinal INTEGER NOT NULL,
+    ordinal_space_id TEXT NOT NULL DEFAULT 'v1_natural_series_video',
+    frame_idx INTEGER NOT NULL,
+    timestamp_ms INTEGER NOT NULL,
+    raw_pts_time REAL NOT NULL,
+    shot_id INTEGER NOT NULL DEFAULT 0,
+    cluster_id INTEGER NOT NULL DEFAULT 0,
+    embedding_index INTEGER NOT NULL DEFAULT 0,
+    source_keyframe_id INTEGER NOT NULL DEFAULT 0,
+    file_name TEXT NOT NULL,
+    image_relpath TEXT NOT NULL,
+    qwen_status TEXT NOT NULL DEFAULT 'OK',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(video_id, frame_idx)
+);
+
+CREATE INDEX IF NOT EXISTS idx_custom_kf_video_frame ON custom_keyframes(video_id, frame_idx);
+CREATE INDEX IF NOT EXISTS idx_custom_kf_video_ordinal ON custom_keyframes(video_ordinal);
+CREATE INDEX IF NOT EXISTS idx_custom_kf_timestamp ON custom_keyframes(video_id, timestamp_ms);
+
+CREATE TABLE IF NOT EXISTS qwen_frames (
+    keyframe_uid TEXT PRIMARY KEY REFERENCES custom_keyframes(keyframe_uid),
+    video_id TEXT NOT NULL,
+    frame_idx INTEGER NOT NULL,
+    timestamp_ms INTEGER NOT NULL,
+    raw_pts_time REAL NOT NULL,
+    objects_json TEXT NOT NULL DEFAULT '[]',
+    attributes_json TEXT NOT NULL DEFAULT '[]',
+    spatial_relations_json TEXT NOT NULL DEFAULT '[]',
+    counts_json TEXT NOT NULL DEFAULT '[]',
+    scene_json TEXT NOT NULL DEFAULT '[]',
+    visible_actions_json TEXT NOT NULL DEFAULT '[]',
+    caption TEXT NOT NULL DEFAULT '',
+    semantic_status TEXT NOT NULL DEFAULT 'OK',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(video_id, frame_idx)
+);
+
+CREATE INDEX IF NOT EXISTS idx_qwen_video_frame ON qwen_frames(video_id, frame_idx);
+
 CREATE TABLE IF NOT EXISTS keyframes (
     keyframe_id TEXT PRIMARY KEY,
     video_id TEXT NOT NULL REFERENCES videos(video_id),

@@ -45,9 +45,13 @@ from aic2026.asr.whisper_runner import (
     validate_asr_shard_artifact,
 )
 from aic2026.data_hub import (
+    CustomKeyframeRegistry,
+    CustomKeyframeValidator,
     VideoRegistry,
     VideoRegistryValidator,
     build_canonical_video_records,
+    build_custom_and_qwen_records,
+    materialize_custom_qwen_catalog,
     materialize_video_catalog,
 )
 
@@ -500,6 +504,104 @@ def cmd_validate_video_catalog(args: argparse.Namespace) -> int:
         return 3
 
 
+def cmd_build_custom_qwen_catalog(args: argparse.Namespace) -> int:
+    import pandas as pd
+
+    # 1. Load VideoRegistry
+    video_cat_dir = Path(args.video_catalog)
+    if not video_cat_dir.exists():
+        _json_print({"status": "REJECTED", "error": f"Video catalog directory not found: {video_cat_dir}"})
+        return 2
+    video_registry = VideoRegistry.load_from_directory(video_cat_dir, validate=True)
+
+    # 2. Load custom keyframes (pkl or jsonl)
+    custom_input = Path(args.custom_input)
+    if not custom_input.exists():
+        _json_print({"status": "REJECTED", "error": f"Custom keyframes input not found: {custom_input}"})
+        return 2
+
+    raw_custom = []
+    if custom_input.suffix == ".pkl":
+        df = pd.read_pickle(custom_input)
+        raw_custom = df.to_dict(orient="records")
+    elif custom_input.suffix == ".jsonl":
+        with open(custom_input, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    raw_custom.append(json.loads(line))
+    else:
+        _json_print({"status": "REJECTED", "error": f"Unsupported custom input format: {custom_input.suffix}"})
+        return 2
+
+    # 3. Load Qwen shard
+    qwen_input = Path(args.qwen_input)
+    if not qwen_input.exists():
+        _json_print({"status": "REJECTED", "error": f"Qwen input not found: {qwen_input}"})
+        return 2
+
+    raw_qwen = []
+    with open(qwen_input, "r", encoding="utf-8") as f:
+        for line in f:
+            if line.strip():
+                raw_qwen.append(json.loads(line))
+
+    try:
+        custom_records, qwen_records, missing_records = build_custom_and_qwen_records(
+            raw_custom,
+            raw_qwen,
+            video_registry=video_registry,
+            custom_space_id=args.custom_space_id,
+        )
+        files_dict = materialize_custom_qwen_catalog(
+            custom_records,
+            qwen_records,
+            missing_records,
+            output_dir=args.out,
+            video_registry=video_registry,
+            custom_space_id=args.custom_space_id,
+            validate=True,
+        )
+        _json_print({
+            "status": "BUILT",
+            "custom_keyframe_count": len(custom_records),
+            "qwen_valid_count": len(qwen_records),
+            "qwen_missing_count": len(missing_records),
+            "custom_space_id": args.custom_space_id,
+            "output_directory": str(args.out),
+            "files": {k: str(v) for k, v in files_dict.items()},
+        })
+        return 0
+    except Exception as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+
+
+def cmd_validate_custom_qwen_catalog(args: argparse.Namespace) -> int:
+    try:
+        video_registry = None
+        if args.video_catalog:
+            video_registry = VideoRegistry.load_from_directory(args.video_catalog, validate=False)
+
+        registry = CustomKeyframeRegistry.load_from_directory(args.catalog_dir, video_registry=video_registry, validate=False)
+        expected_video_count = args.expected_video_count if args.expected_video_count is not None else (video_registry.video_count() if video_registry else 873)
+        validator = CustomKeyframeValidator(
+            expected_keyframe_count=args.expected_count,
+            expected_video_count=expected_video_count,
+            video_registry=video_registry,
+        )
+        result = validator.validate(
+            registry.to_custom_records(),
+            registry.to_qwen_records(),
+            missing_records=registry._missing_records,
+            custom_space=registry.custom_space,
+        )
+        _json_print(result.to_dict())
+        return 0 if result.is_valid else 3
+    except Exception as exc:
+        _json_print({"is_valid": False, "errors": [str(exc)]})
+        return 3
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aic", description="AIC 2026 reliability/control-plane CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -516,6 +618,21 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--expected-count", type=int, default=873)
     p.add_argument("--ordinal-space-id", default="v1_natural_series_video")
     p.set_defaults(func=cmd_validate_video_catalog)
+
+    p = sub.add_parser("build-custom-qwen-catalog", help="xây dựng canonical custom_keyframes và qwen_semantics metadata")
+    p.add_argument("--custom-input", required=True, help="đường dẫn df_keyframes.pkl hoặc jsonl")
+    p.add_argument("--qwen-input", required=True, help="đường dẫn shard_000.jsonl")
+    p.add_argument("--video-catalog", required=True, help="thư mục chứa canonical video catalog (M1A)")
+    p.add_argument("--out", required=True, help="thư mục output")
+    p.add_argument("--custom-space-id", default="custom_keyframes_v1")
+    p.set_defaults(func=cmd_build_custom_qwen_catalog)
+
+    p = sub.add_parser("validate-custom-qwen-catalog", help="xác thực fail-closed cho custom keyframes và Qwen catalog")
+    p.add_argument("--catalog-dir", required=True, help="thư mục catalog custom/qwen")
+    p.add_argument("--video-catalog", help="thư mục video catalog để đối soát ordinal")
+    p.add_argument("--expected-count", type=int, default=116767)
+    p.add_argument("--expected-video-count", type=int, help="số video kỳ vọng (mặc định 873 hoặc từ video catalog)")
+    p.set_defaults(func=cmd_validate_custom_qwen_catalog)
 
     p = sub.add_parser("doctor", help="check environment/path prerequisites")
     p.add_argument("--config", required=True)
