@@ -8,17 +8,40 @@ CREATE TABLE IF NOT EXISTS schema_meta (
 
 INSERT OR IGNORE INTO schema_meta(key, value) VALUES ('schema_version', '1');
 
+CREATE TABLE IF NOT EXISTS source_registry (
+    source_id TEXT PRIMARY KEY,
+    source_type TEXT NOT NULL,
+    scope TEXT NOT NULL,
+    relative_path TEXT NOT NULL,
+    schema_version TEXT NOT NULL DEFAULT 'v1',
+    record_count INTEGER NOT NULL,
+    checksum TEXT NOT NULL,
+    producer TEXT,
+    status TEXT NOT NULL DEFAULT 'READY',
+    notes_json TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS videos (
     video_id TEXT PRIMARY KEY,
+    ordinal INTEGER UNIQUE,
+    ordinal_space_id TEXT NOT NULL DEFAULT 'v1_natural_series_video',
+    series TEXT NOT NULL DEFAULT '',
     relpath TEXT NOT NULL UNIQUE,
+    duration_ms INTEGER,
     duration_sec REAL,
     fps REAL,
     width INTEGER,
     height INTEGER,
     batch TEXT,
+    status_flags TEXT NOT NULL DEFAULT 'OK',
+    source_id TEXT NOT NULL DEFAULT '',
     source_sha256 TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_videos_ordinal ON videos(ordinal);
+CREATE INDEX IF NOT EXISTS idx_videos_series ON videos(series);
 
 CREATE TABLE IF NOT EXISTS keyframes (
     keyframe_id TEXT PRIMARY KEY,

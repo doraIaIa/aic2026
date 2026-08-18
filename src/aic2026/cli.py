@@ -44,6 +44,13 @@ from aic2026.asr.whisper_runner import (
     run_asr_shard,
     validate_asr_shard_artifact,
 )
+from aic2026.data_hub import (
+    VideoRegistry,
+    VideoRegistryValidator,
+    build_canonical_video_records,
+    materialize_video_catalog,
+)
+
 
 
 def _json_print(value) -> None:
@@ -425,9 +432,90 @@ def cmd_export_asr_candidates(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_build_video_catalog(args: argparse.Namespace) -> int:
+    input_path = Path(args.input)
+    if not input_path.exists():
+        _json_print({"status": "REJECTED", "error": f"Input file not found: {input_path}"})
+        return 2
+
+    raw_items = []
+    if input_path.suffix == ".jsonl":
+        with open(input_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    raw_items.append(json.loads(line))
+    elif input_path.suffix == ".json":
+        with open(input_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            raw_items = data if isinstance(data, list) else data.get("videos", [])
+    else:
+        _json_print({"status": "REJECTED", "error": f"Unsupported input format: {input_path.suffix}"})
+        return 2
+
+    try:
+        records = build_canonical_video_records(
+            raw_items,
+            ordinal_space_id=args.ordinal_space_id,
+            source_id=args.source_id,
+        )
+        v_file, s_file, p_file = materialize_video_catalog(
+            records,
+            output_dir=args.out,
+            video_space_id=args.ordinal_space_id,
+            validate=True,
+        )
+        registry = VideoRegistry.load_from_directory(args.out, validate=True)
+        _json_print({
+            "status": "BUILT",
+            "video_count": registry.video_count(),
+            "video_space_id": registry.video_space_id,
+            "catalog_checksum": registry.catalog_checksum,
+            "series_counts": registry.series_counts(),
+            "output_directory": str(args.out),
+            "files": {
+                "videos": str(v_file),
+                "source_registry": str(s_file),
+                "video_space": str(p_file),
+            },
+        })
+        return 0
+    except Exception as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+
+
+def cmd_validate_video_catalog(args: argparse.Namespace) -> int:
+    try:
+        registry = VideoRegistry.load_from_directory(args.catalog_dir, validate=False)
+        validator = VideoRegistryValidator(
+            expected_count=args.expected_count,
+            expected_ordinal_space_id=args.ordinal_space_id,
+        )
+        result = validator.validate(registry.to_records(), registry.video_space)
+        _json_print(result.to_dict())
+        return 0 if result.is_valid else 3
+    except Exception as exc:
+        _json_print({"is_valid": False, "errors": [str(exc)]})
+        return 3
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aic", description="AIC 2026 reliability/control-plane CLI")
     sub = parser.add_subparsers(dest="command", required=True)
+
+    p = sub.add_parser("build-video-catalog", help="xây dựng canonical videos.jsonl và video_space metadata")
+    p.add_argument("--input", required=True, help="đường dẫn file JSON/JSONL chứa metadata video gốc (ví dụ asr_videos.jsonl)")
+    p.add_argument("--out", required=True, help="thư mục output lưu canonical catalog")
+    p.add_argument("--ordinal-space-id", default="v1_natural_series_video")
+    p.add_argument("--source-id", default="canonical_video_universe_v1")
+    p.set_defaults(func=cmd_build_video_catalog)
+
+    p = sub.add_parser("validate-video-catalog", help="xác thực fail-closed cho canonical video catalog")
+    p.add_argument("--catalog-dir", required=True, help="thư mục chứa videos.jsonl và video_space.json")
+    p.add_argument("--expected-count", type=int, default=873)
+    p.add_argument("--ordinal-space-id", default="v1_natural_series_video")
+    p.set_defaults(func=cmd_validate_video_catalog)
 
     p = sub.add_parser("doctor", help="check environment/path prerequisites")
     p.add_argument("--config", required=True)
