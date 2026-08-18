@@ -209,6 +209,90 @@ class AsrOcrCatalogBuilder:
 
         return coverage_records
 
+    def build_bge_rowmaps_and_items(
+        self,
+        dense_dir: Path,
+    ) -> Tuple[List[OcrItemRecord], List[OcrBgeRowmapRecord]]:
+        """Parse all 10 BGE metadata shards and build canonical OcrItemRecord and OcrBgeRowmapRecord."""
+        dense_dir = Path(dense_dir)
+        if not dense_dir.exists():
+            raise FileNotFoundError(f"Dense OCR retrieval directory not found: {dense_dir}")
+
+        # Index CUSTOM keyframes by (video_id, file_stem)
+        kf_map: Dict[Tuple[str, str], Any] = {}
+        for kf in self.custom_registry.iter_custom_keyframes():
+            stem = kf.file_name.rsplit(".", 1)[0]
+            kf_map[(kf.video_id, stem)] = kf
+
+        ocr_items: List[OcrItemRecord] = []
+        bge_rowmaps: List[OcrBgeRowmapRecord] = []
+        global_idx = 0
+
+        for shard_idx in range(10):
+            shard_str = f"{shard_idx:03d}"
+            meta_path = dense_dir / f"metadata_shard_{shard_str}.json"
+            if not meta_path.exists():
+                raise FileNotFoundError(f"Metadata shard not found: {meta_path}")
+
+            with open(meta_path, "r", encoding="utf-8") as f:
+                rows = json.load(f)
+
+            for row_idx, r in enumerate(rows):
+                vid = r["video_id"]
+                kf_id = r["keyframe_id"]
+                t_idx = int(r.get("text_index", 0))
+
+                target_kf = kf_map.get((vid, kf_id))
+                if target_kf is None:
+                    raise KeyError(f"Unknown keyframe in shard {shard_str} row {row_idx}: video={vid}, keyframe={kf_id}")
+
+                ocr_uid = f"OCR:{target_kf.keyframe_uid}:T{t_idx}"
+                text_raw = str(r.get("text", ""))
+                text_norm = normalize_canonical_text(text_raw)
+                score = float(r["ocr_score"]) if r.get("ocr_score") is not None else None
+                bbox_raw = r.get("bbox")
+                bbox = list(bbox_raw) if bbox_raw is not None else None
+                dense_ref = f"bge-m3:{shard_str}:{row_idx}"
+
+                item_rec = OcrItemRecord(
+                    ocr_uid=ocr_uid,
+                    video_id=vid,
+                    video_ordinal=target_kf.video_ordinal,
+                    ordinal_space_id=target_kf.ordinal_space_id,
+                    frame_space="CUSTOM",
+                    keyframe_uid=target_kf.keyframe_uid,
+                    frame_idx=target_kf.frame_idx,
+                    timestamp_ms=target_kf.timestamp_ms,
+                    raw_pts_time=target_kf.raw_pts_time,
+                    local_text_index=t_idx,
+                    text_raw=text_raw,
+                    text_norm=text_norm,
+                    bbox=bbox,
+                    ocr_confidence=score,
+                    ocr_type=r.get("type", "single"),
+                    dense_embedding_ref=dense_ref,
+                    source_id="ocr_bge_m3_single_text_v1",
+                    schema_version="v1",
+                )
+                ocr_items.append(item_rec)
+
+                rowmap_rec = OcrBgeRowmapRecord(
+                    index_id="ocr_bge_m3_single_text_v1",
+                    shard_id=shard_str,
+                    row_in_shard=row_idx,
+                    global_row=global_idx,
+                    ocr_uid=ocr_uid,
+                    keyframe_uid=target_kf.keyframe_uid,
+                    video_id=vid,
+                    frame_idx=target_kf.frame_idx,
+                    timestamp_ms=target_kf.timestamp_ms,
+                    source_metadata_ref=f"metadata_shard_{shard_str}.json#row{row_idx}",
+                )
+                bge_rowmaps.append(rowmap_rec)
+                global_idx += 1
+
+        return ocr_items, bge_rowmaps
+
     def materialize(
         self,
         output_dir: Path,
@@ -217,10 +301,18 @@ class AsrOcrCatalogBuilder:
         ocr_manifest_path: Path,
         ocr_items: Optional[List[OcrItemRecord]] = None,
         bge_rowmaps: Optional[List[OcrBgeRowmapRecord]] = None,
+        dense_dir: Optional[Path] = None,
     ) -> AsrOcrValidationResult:
         """Materialize canonical ASR and OCR datasets into output_dir with fail-closed validation."""
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
+
+        if dense_dir is not None and (ocr_items is None or bge_rowmaps is None):
+            built_items, built_rowmaps = self.build_bge_rowmaps_and_items(dense_dir)
+            if ocr_items is None:
+                ocr_items = built_items
+            if bge_rowmaps is None:
+                bge_rowmaps = built_rowmaps
 
         asr_coverage, asr_segments = self.build_asr_catalog(asr_videos_path, asr_segments_path)
         ocr_keyframes = self.build_ocr_coverage_catalog(ocr_manifest_path)
@@ -288,6 +380,15 @@ class AsrOcrCatalogBuilder:
             "canonical_checksum": validation.ocr_canonical_checksum,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
+        if validation.bge_vector_row_count > 0:
+            ocr_space["bge_model"] = "BAAI/bge-m3"
+            ocr_space["bge_dimension"] = 1024
+            ocr_space["bge_normalized"] = True
+            ocr_space["bge_shards"] = 10
+            ocr_space["bge_vector_rows"] = validation.bge_vector_row_count
+            ocr_space["bge_mapped_rows"] = validation.bge_mapped_row_count
+            ocr_space["bge_rowmap_checksum"] = validation.bge_rowmap_checksum
+
         with open(output_dir / "ocr_space.json", "w", encoding="utf-8") as f:
             json.dump(ocr_space, f, indent=2, ensure_ascii=False)
 
@@ -312,6 +413,17 @@ class AsrOcrCatalogBuilder:
                 "status": "CANONICAL",
             },
         ]
+        if validation.bge_mapped_row_count > 0:
+            source_records.append({
+                "source_id": "ocr_bge_m3_single_text_v1",
+                "source_type": "DENSE_EMBEDDING_SHARDS",
+                "scope": f"{validation.bge_mapped_row_count}_VECTOR_ROWS",
+                "relative_path": "ocr_bge_rowmap.jsonl",
+                "record_count": validation.bge_mapped_row_count,
+                "checksum": validation.bge_rowmap_checksum,
+                "status": "CANONICAL",
+            })
+
         with open(output_dir / "source_registry.jsonl", "w", encoding="utf-8") as f:
             for s in source_records:
                 f.write(json.dumps(s, ensure_ascii=False) + "\n")

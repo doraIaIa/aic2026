@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 from aic2026.data_hub.asr_ocr_models import (
@@ -68,6 +69,55 @@ class AsrOcrValidator:
             line = f"{r.shard_id}:{r.row_in_shard}:{r.ocr_uid}:{r.keyframe_uid}\n"
             hasher.update(line.encode("utf-8"))
         return hasher.hexdigest()
+
+    def validate_bge_shards_on_disk(
+        self,
+        dense_dir: Path,
+        expected_shard_count: int = 10,
+        expected_dim: int = 1024,
+    ) -> List[str]:
+        """Validate actual .npy and .json shard files on disk."""
+        errors: List[str] = []
+        dense_dir = Path(dense_dir)
+        if not dense_dir.exists():
+            return [f"DENSE_DIR_NOT_FOUND: {dense_dir}"]
+
+        import json
+        import numpy as np
+        total_meta = 0
+        total_vec = 0
+
+        for shard_idx in range(expected_shard_count):
+            shard_str = f"{shard_idx:03d}"
+            npy_path = dense_dir / f"embeddings_shard_{shard_str}.npy"
+            json_path = dense_dir / f"metadata_shard_{shard_str}.json"
+
+            if not npy_path.exists():
+                errors.append(f"MISSING_EMBEDDING_SHARD: {npy_path}")
+                continue
+            if not json_path.exists():
+                errors.append(f"MISSING_METADATA_SHARD: {json_path}")
+                continue
+
+            arr = None
+            try:
+                arr = np.load(npy_path, mmap_mode="r")
+                if len(arr.shape) != 2 or arr.shape[1] != expected_dim:
+                    errors.append(f"INVALID_SHARD_SHAPE: {npy_path} has shape {arr.shape}, expected (*, {expected_dim})")
+                total_vec += arr.shape[0]
+            except Exception as exc:
+                errors.append(f"CORRUPT_EMBEDDING_SHARD: {npy_path} error: {exc}")
+
+            try:
+                with open(json_path, "r", encoding="utf-8") as f:
+                    rows = json.load(f)
+                total_meta += len(rows)
+                if arr is not None and len(rows) != arr.shape[0]:
+                    errors.append(f"SHARD_ROW_COUNT_MISMATCH: Shard {shard_str} has {len(rows)} metadata rows != {arr.shape[0]} vector rows")
+            except Exception as exc:
+                errors.append(f"CORRUPT_METADATA_SHARD: {json_path} error: {exc}")
+
+        return errors
 
     def validate(
         self,
@@ -220,7 +270,13 @@ class AsrOcrValidator:
                     if not isinstance(it.bbox, list) or len(it.bbox) != 4:
                         errors.append(f"INVALID_BBOX_SHAPE: Item '{it.ocr_uid}' has invalid bbox: {it.bbox}")
                     else:
-                        if any(math.isnan(x) or math.isinf(x) for x in it.bbox):
+                        coords: List[float] = []
+                        for elem in it.bbox:
+                            if isinstance(elem, (list, tuple)):
+                                coords.extend(elem)
+                            elif isinstance(elem, (int, float)):
+                                coords.append(float(elem))
+                        if any(math.isnan(x) or math.isinf(x) for x in coords):
                             errors.append(f"NON_FINITE_BBOX: Item '{it.ocr_uid}' has non-finite bbox coordinates: {it.bbox}")
 
         ocr_checksum = self.compute_ocr_canonical_checksum(ocr_keyframes, ocr_items)

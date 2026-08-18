@@ -580,3 +580,55 @@ def test_asr_ocr_builder_materialization(tmp_path, mock_video_registry, mock_cus
     assert len(registry._asr_coverage_by_video) == 2
     assert len(registry._ocr_kf_by_uid) == 2
     assert registry.get_asr_video_status("L24_V008").asr_status == "ZERO_ASR_SEGMENTS"
+
+
+# ----------------------------------------------------------------------
+# 6. M1C-R1 BGE Shard Disk Validation & Determinism Tests
+# ----------------------------------------------------------------------
+def test_bge_shard_disk_validator_rejects_missing_or_corrupt_files(tmp_path, mock_video_registry, mock_custom_registry):
+    validator = AsrOcrValidator(video_registry=mock_video_registry, custom_registry=mock_custom_registry)
+    
+    dense_dir = tmp_path / "mock_dense"
+    dense_dir.mkdir()
+
+    # 1. Missing shard files
+    errors = validator.validate_bge_shards_on_disk(dense_dir, expected_shard_count=2, expected_dim=1024)
+    assert len(errors) > 0
+    assert any("MISSING_EMBEDDING_SHARD" in e for e in errors)
+
+    # 2. Shard with wrong dimension (512 instead of 1024)
+    import numpy as np
+    emb0 = np.zeros((10, 512), dtype=np.float32)
+    np.save(dense_dir / "embeddings_shard_000.npy", emb0)
+    with open(dense_dir / "metadata_shard_000.json", "w", encoding="utf-8") as f:
+        json.dump([{"video_id": "L21_V001", "keyframe_id": "000001", "text_index": 0}] * 10, f)
+
+    emb1 = np.zeros((5, 1024), dtype=np.float32)
+    np.save(dense_dir / "embeddings_shard_001.npy", emb1)
+    with open(dense_dir / "metadata_shard_001.json", "w", encoding="utf-8") as f:
+        json.dump([{"video_id": "L24_V008", "keyframe_id": "000001", "text_index": 0}] * 5, f)
+
+    errors = validator.validate_bge_shards_on_disk(dense_dir, expected_shard_count=2, expected_dim=1024)
+    assert any("INVALID_SHARD_SHAPE" in e for e in errors)
+
+    # 3. Shard with row count mismatch (vector rows != metadata rows)
+    emb0_correct = np.zeros((10, 1024), dtype=np.float32)
+    np.save(dense_dir / "embeddings_shard_000.npy", emb0_correct)
+    with open(dense_dir / "metadata_shard_000.json", "w", encoding="utf-8") as f:
+        json.dump([{"video_id": "L21_V001", "keyframe_id": "000001", "text_index": 0}] * 8, f) # 8 != 10
+
+    errors = validator.validate_bge_shards_on_disk(dense_dir, expected_shard_count=2, expected_dim=1024)
+    assert any("SHARD_ROW_COUNT_MISMATCH" in e for e in errors)
+
+
+def test_bge_rowmap_checksum_determinism(mock_video_registry, mock_custom_registry):
+    validator = AsrOcrValidator(video_registry=mock_video_registry, custom_registry=mock_custom_registry)
+    
+    r1 = OcrBgeRowmapRecord("ocr_bge_m3_single_text_v1", "000", 0, "OCR:CUSTOM:L21_V001:F15:T0", "CUSTOM:L21_V001:F15", "L21_V001", 15, 500)
+    r2 = OcrBgeRowmapRecord("ocr_bge_m3_single_text_v1", "000", 1, "OCR:CUSTOM:L24_V008:F30:T0", "CUSTOM:L24_V008:F30", "L24_V008", 30, 1000)
+
+    hash1 = validator.compute_bge_rowmap_checksum([r1, r2])
+    hash2 = validator.compute_bge_rowmap_checksum([r2, r1]) # Order should be sorted
+    assert hash1 == hash2
+    assert len(hash1) == 64
+
