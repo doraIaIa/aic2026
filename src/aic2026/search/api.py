@@ -17,8 +17,9 @@ from aic2026.media.resolver import MediaResolver
 from aic2026.retrieval.capabilities import CapabilityService
 from aic2026.retrieval.contract import RetrievalContractError
 from aic2026.retrieval.orchestrator import SearchOrchestrator
-from aic2026.retrieval.providers import AsrProvider, VisualProvider
+from aic2026.retrieval.providers import AsrProvider, ObjectProvider, VisualProvider
 from aic2026.search.asr import AsrSearchError, search_asr
+from aic2026.workspace import WorkspaceError, WorkspaceStore
 
 
 DEFAULT_HOST = "127.0.0.1"
@@ -35,6 +36,7 @@ class AsrSearchApi:
         )
         self.orchestrator = orchestrator or SearchOrchestrator(self.capability_service.providers)
         self.media_resolver = media_resolver
+        self.workspace = WorkspaceStore(self.database)
 
     def health(self) -> tuple[int, dict[str, Any]]:
         if not self.database.is_file():
@@ -128,7 +130,16 @@ def make_handler(
                     self._write_json(HTTPStatus.NOT_FOUND, {"status": "ERROR", "error": "Media endpoint not found"})
                 return
             try:
-                if parsed.path == "/api/health":
+                if parsed.path == "/api/v1/workspace":
+                    status, payload = HTTPStatus.OK, {"items": application.workspace.list(_single_parameter(parse_qs(parsed.query), "q", required=False) or "")}
+                elif parsed.path == "/api/v1/workspace/export":
+                    fmt = _single_parameter(parse_qs(parsed.query), "format", required=False) or "json"
+                    content = application.workspace.export(fmt)
+                    self._write_json(HTTPStatus.OK, {"format": fmt, "content": content})
+                    return
+                elif parsed.path.startswith("/api/v1/workspace/"):
+                    status, payload = HTTPStatus.OK, application.workspace.get(parsed.path.rsplit("/", 1)[-1])
+                elif parsed.path == "/api/health":
                     status, payload = application.health()
                 elif parsed.path == "/api/v1/capabilities":
                     status, payload = application.capabilities()
@@ -139,13 +150,13 @@ def make_handler(
                         "status": "ERROR",
                         "error": "Endpoint not found",
                     }
-            except AsrSearchError as exc:
+            except (AsrSearchError, WorkspaceError) as exc:
                 status, payload = HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": str(exc)}
             self._write_json(status, payload)
 
         def do_POST(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
-            if parsed.path != "/api/v1/search":
+            if parsed.path not in {"/api/v1/search", "/api/v1/workspace"} and not parsed.path.startswith("/api/v1/workspace/"):
                 self._write_json(HTTPStatus.NOT_FOUND, {"status": "ERROR", "error": "Endpoint not found"})
                 return
             try:
@@ -153,12 +164,27 @@ def make_handler(
                 if length <= 0 or length > 1024 * 1024:
                     raise RetrievalContractError("Request body phải nằm trong 1 byte..1 MiB")
                 request = json.loads(self.rfile.read(length).decode("utf-8"))
-                status, payload = application.unified_search(request)
-            except (RetrievalContractError, json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
+                if parsed.path == "/api/v1/search":
+                    status, payload = application.unified_search(request)
+                else:
+                    entry_id = parsed.path.rsplit("/", 1)[-1] if parsed.path != "/api/v1/workspace" else None
+                    status, payload = HTTPStatus.OK, application.workspace.save(request, entry_id=entry_id)
+            except (RetrievalContractError, WorkspaceError, json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
                 status, payload = HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": str(exc)}
             except Exception as exc:
                 status, payload = HTTPStatus.INTERNAL_SERVER_ERROR, {"status": "ERROR", "error": f"{type(exc).__name__}: {exc}"}
             self._write_json(status, payload)
+
+        def do_DELETE(self) -> None:  # noqa: N802
+            parsed = urlparse(self.path)
+            if not parsed.path.startswith("/api/v1/workspace/"):
+                self._write_json(HTTPStatus.NOT_FOUND, {"status": "ERROR", "error": "Endpoint not found"})
+                return
+            try:
+                application.workspace.delete(parsed.path.rsplit("/", 1)[-1])
+                self._write_json(HTTPStatus.OK, {"status": "OK"})
+            except WorkspaceError as exc:
+                self._write_json(HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": str(exc)})
 
         def log_message(self, format: str, *args: object) -> None:
             print(f"[asr-api] {self.address_string()} {format % args}")
@@ -213,6 +239,7 @@ def main(argv: list[str] | None = None) -> int:
         {
             "asr": AsrProvider(database),
             "visual": VisualProvider(resolver.artifact("m1/clip-faiss-btc-v1")),
+            "object": ObjectProvider(database),
         },
         media_root=resolver.data_root,
     )

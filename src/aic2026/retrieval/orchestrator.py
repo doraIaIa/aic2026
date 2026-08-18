@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from aic2026.retrieval.contract import CONTRACT_VERSION, POLICY_VERSION, validate_search_request, validate_search_response
+from aic2026.retrieval.planner import RulePlanner
 from aic2026.retrieval.providers.base import ProviderCapability, ProviderHit, ProviderQuery, SearchProvider
 from aic2026.retrieval.windowing import WindowPolicy, build_evidence_windows, rank_windows
 
@@ -31,6 +32,7 @@ class SearchOrchestrator:
         self.providers = dict(providers)
         self.config = config or OrchestratorConfig()
         self.window_policy = WindowPolicy.authority()
+        self.planner = RulePlanner()
         self._executor = ThreadPoolExecutor(max_workers=self.config.max_workers, thread_name_prefix="retrieval-provider")
 
     def close(self) -> None:
@@ -86,7 +88,9 @@ class SearchOrchestrator:
 
         if strategy == "auto":
             selected = [lane for lane in ("visual", "asr", "ocr", "object") if capabilities[lane].status == "OK"]
-            route_reason = "baseline_all_available_v1"
+            plan = self.planner.plan(request["query_text"], tuple(selected))
+            route_reason = plan.version
+            warnings.extend(f"PLANNER_{code}" for code in plan.reason_codes if code != "BASELINE_ALL_AVAILABLE")
         else:
             selected = list(request["routing"]["enabled_lanes"])
             route_reason = "manual_override_v1"

@@ -20,7 +20,7 @@ class CapabilityService:
 
     def report(self) -> dict[str, Any]:
         states: dict[str, dict[str, Any]] = {}
-        for lane in ("asr", "visual"):
+        for lane in ("asr", "visual", "ocr", "object"):
             provider = self.providers.get(lane)
             if provider is None:
                 state = self._unavailable(lane, f"{lane.upper()}_PROVIDER_NOT_CONFIGURED")
@@ -30,8 +30,9 @@ class CapabilityService:
                 except Exception as exc:  # provider boundary: không làm process chết
                     state = ProviderCapability(lane, "INTEGRITY_ERROR", f"{type(exc).__name__}: {exc}", None, {}, {}, {})
             states[lane] = state.to_dict()
-        states["ocr"] = self._unavailable("ocr", "OCR_ARTIFACT_NOT_AVAILABLE").to_dict()
-        states["object"] = self._unavailable("object", "OBJECT_ARTIFACT_NOT_AVAILABLE").to_dict()
+        for lane in ("ocr", "object"):
+            if lane not in states:
+                states[lane] = self._unavailable(lane, f"{lane.upper()}_ARTIFACT_NOT_AVAILABLE").to_dict()
         return {
             "contract_version": CONTRACT_VERSION,
             "policy_version": POLICY_VERSION,

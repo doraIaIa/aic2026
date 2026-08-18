@@ -189,7 +189,7 @@ class VisualProvider:
             if np.any(norm == 0):
                 raise ProviderIntegrityError("VISUAL_QUERY_VECTOR_ZERO_NORM")
             vector = np.ascontiguousarray(vector / norm, dtype=np.float32)
-            search_k = min(100, int(self._index.ntotal))
+            search_k = min(query.top_k, int(self._index.ntotal))
             scores, ids = self._index.search(vector, search_k)
         allowed = set(query.video_ids)
         hits: list[ProviderHit] = []

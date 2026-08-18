@@ -95,7 +95,7 @@ def test_asr_search_api_health_search_filter_and_validation(tmp_path: Path) -> N
         status, unified = _post_json(f"{base_url}/api/v1/search", search_request)
         assert status == 200
         assert unified["status"] == "OK"
-        assert unified["route"]["reason"] == "baseline_all_available_v1"
+        assert unified["route"]["reason"] == "rule_planner_v1"
         assert unified["results"][0]["representative"]["submit_valid"] is False
         assert unified["results"][0]["evidence"][0]["modality"] == "asr"
 
@@ -126,4 +126,27 @@ def test_asr_search_api_health_search_filter_and_validation(tmp_path: Path) -> N
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_workspace_http_crud_and_trake_same_video_guard(tmp_path: Path) -> None:
+    server = create_server(_database(tmp_path / "workspace.sqlite"), port=0)
+    thread = threading.Thread(target=server.serve_forever, daemon=True); thread.start()
+    base_url = f"http://127.0.0.1:{server.server_port}"
+    payload = {"btc_stt": "test-cleanup", "original_query": "xe", "search_query": "xe", "query_type": "KIS", "video_id": "V1", "timestamp_sec": 1.0, "frame_id": 25, "answer_text": None, "match_lanes": ["visual"], "note": "", "status": "draft", "events": []}
+    try:
+        status, created = _post_json(f"{base_url}/api/v1/workspace", payload)
+        assert status == 200 and created["status"] == "draft"
+        entry_id = created["id"]
+        status, listed = _get_json(f"{base_url}/api/v1/workspace?q=test-cleanup")
+        assert status == 200 and listed["items"][0]["id"] == entry_id
+        status, exported = _get_json(f"{base_url}/api/v1/workspace/export?format=csv")
+        assert status == 200 and "frame_id" in exported["content"]
+        bad = {**payload, "query_type": "TRAKE", "events": [{"event_order": 1, "video_id": "V1", "timestamp_sec": 1.0, "frame_id": 25}, {"event_order": 2, "video_id": "V2", "timestamp_sec": 2.0, "frame_id": 50}]}
+        status, _ = _post_json(f"{base_url}/api/v1/workspace", bad)
+        assert status == 400
+        request = Request(f"{base_url}/api/v1/workspace/{entry_id}", method="DELETE")
+        with urlopen(request) as response:
+            assert response.status == 200
+    finally:
+        server.shutdown(); server.server_close()
         thread.join(timeout=5)

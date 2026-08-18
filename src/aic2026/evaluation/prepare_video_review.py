@@ -1,6 +1,6 @@
 from aic2026.core.config import load_config
 from aic2026.core.paths import PathResolver
-﻿import json
+import json
 import csv
 import shutil
 from pathlib import Path

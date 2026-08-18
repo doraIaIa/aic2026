@@ -1,0 +1,290 @@
+{
+  "item_count": 40,
+  "items": [
+    {
+      "item_id": "demo-000000",
+      "metadata": {
+        "ordinal": 0
+      },
+      "source_relpath": "demo/000000.txt"
+    },
+    {
+      "item_id": "demo-000001",
+      "metadata": {
+        "ordinal": 1
+      },
+      "source_relpath": "demo/000001.txt"
+    },
+    {
+      "item_id": "demo-000002",
+      "metadata": {
+        "ordinal": 2
+      },
+      "source_relpath": "demo/000002.txt"
+    },
+    {
+      "item_id": "demo-000003",
+      "metadata": {
+        "ordinal": 3
+      },
+      "source_relpath": "demo/000003.txt"
+    },
+    {
+      "item_id": "demo-000004",
+      "metadata": {
+        "ordinal": 4
+      },
+      "source_relpath": "demo/000004.txt"
+    },
+    {
+      "item_id": "demo-000005",
+      "metadata": {
+        "ordinal": 5
+      },
+      "source_relpath": "demo/000005.txt"
+    },
+    {
+      "item_id": "demo-000006",
+      "metadata": {
+        "ordinal": 6
+      },
+      "source_relpath": "demo/000006.txt"
+    },
+    {
+      "item_id": "demo-000007",
+      "metadata": {
+        "ordinal": 7
+      },
+      "source_relpath": "demo/000007.txt"
+    },
+    {
+      "item_id": "demo-000008",
+      "metadata": {
+        "ordinal": 8
+      },
+      "source_relpath": "demo/000008.txt"
+    },
+    {
+      "item_id": "demo-000009",
+      "metadata": {
+        "ordinal": 9
+      },
+      "source_relpath": "demo/000009.txt"
+    },
+    {
+      "item_id": "demo-000010",
+      "metadata": {
+        "ordinal": 10
+      },
+      "source_relpath": "demo/000010.txt"
+    },
+    {
+      "item_id": "demo-000011",
+      "metadata": {
+        "ordinal": 11
+      },
+      "source_relpath": "demo/000011.txt"
+    },
+    {
+      "item_id": "demo-000012",
+      "metadata": {
+        "ordinal": 12
+      },
+      "source_relpath": "demo/000012.txt"
+    },
+    {
+      "item_id": "demo-000013",
+      "metadata": {
+        "ordinal": 13
+      },
+      "source_relpath": "demo/000013.txt"
+    },
+    {
+      "item_id": "demo-000014",
+      "metadata": {
+        "ordinal": 14
+      },
+      "source_relpath": "demo/000014.txt"
+    },
+    {
+      "item_id": "demo-000015",
+      "metadata": {
+        "ordinal": 15
+      },
+      "source_relpath": "demo/000015.txt"
+    },
+    {
+      "item_id": "demo-000016",
+      "metadata": {
+        "ordinal": 16
+      },
+      "source_relpath": "demo/000016.txt"
+    },
+    {
+      "item_id": "demo-000017",
+      "metadata": {
+        "ordinal": 17
+      },
+      "source_relpath": "demo/000017.txt"
+    },
+    {
+      "item_id": "demo-000018",
+      "metadata": {
+        "ordinal": 18
+      },
+      "source_relpath": "demo/000018.txt"
+    },
+    {
+      "item_id": "demo-000019",
+      "metadata": {
+        "ordinal": 19
+      },
+      "source_relpath": "demo/000019.txt"
+    },
+    {
+      "item_id": "demo-000020",
+      "metadata": {
+        "ordinal": 20
+      },
+      "source_relpath": "demo/000020.txt"
+    },
+    {
+      "item_id": "demo-000021",
+      "metadata": {
+        "ordinal": 21
+      },
+      "source_relpath": "demo/000021.txt"
+    },
+    {
+      "item_id": "demo-000022",
+      "metadata": {
+        "ordinal": 22
+      },
+      "source_relpath": "demo/000022.txt"
+    },
+    {
+      "item_id": "demo-000023",
+      "metadata": {
+        "ordinal": 23
+      },
+      "source_relpath": "demo/000023.txt"
+    },
+    {
+      "item_id": "demo-000024",
+      "metadata": {
+        "ordinal": 24
+      },
+      "source_relpath": "demo/000024.txt"
+    },
+    {
+      "item_id": "demo-000025",
+      "metadata": {
+        "ordinal": 25
+      },
+      "source_relpath": "demo/000025.txt"
+    },
+    {
+      "item_id": "demo-000026",
+      "metadata": {
+        "ordinal": 26
+      },
+      "source_relpath": "demo/000026.txt"
+    },
+    {
+      "item_id": "demo-000027",
+      "metadata": {
+        "ordinal": 27
+      },
+      "source_relpath": "demo/000027.txt"
+    },
+    {
+      "item_id": "demo-000028",
+      "metadata": {
+        "ordinal": 28
+      },
+      "source_relpath": "demo/000028.txt"
+    },
+    {
+      "item_id": "demo-000029",
+      "metadata": {
+        "ordinal": 29
+      },
+      "source_relpath": "demo/000029.txt"
+    },
+    {
+      "item_id": "demo-000030",
+      "metadata": {
+        "ordinal": 30
+      },
+      "source_relpath": "demo/000030.txt"
+    },
+    {
+      "item_id": "demo-000031",
+      "metadata": {
+        "ordinal": 31
+      },
+      "source_relpath": "demo/000031.txt"
+    },
+    {
+      "item_id": "demo-000032",
+      "metadata": {
+        "ordinal": 32
+      },
+      "source_relpath": "demo/000032.txt"
+    },
+    {
+      "item_id": "demo-000033",
+      "metadata": {
+        "ordinal": 33
+      },
+      "source_relpath": "demo/000033.txt"
+    },
+    {
+      "item_id": "demo-000034",
+      "metadata": {
+        "ordinal": 34
+      },
+      "source_relpath": "demo/000034.txt"
+    },
+    {
+      "item_id": "demo-000035",
+      "metadata": {
+        "ordinal": 35
+      },
+      "source_relpath": "demo/000035.txt"
+    },
+    {
+      "item_id": "demo-000036",
+      "metadata": {
+        "ordinal": 36
+      },
+      "source_relpath": "demo/000036.txt"
+    },
+    {
+      "item_id": "demo-000037",
+      "metadata": {
+        "ordinal": 37
+      },
+      "source_relpath": "demo/000037.txt"
+    },
+    {
+      "item_id": "demo-000038",
+      "metadata": {
+        "ordinal": 38
+      },
+      "source_relpath": "demo/000038.txt"
+    },
+    {
+      "item_id": "demo-000039",
+      "metadata": {
+        "ordinal": 39
+      },
+      "source_relpath": "demo/000039.txt"
+    }
+  ],
+  "schema_version": 1,
+  "shard_id": "demo-000",
+  "source_manifest": "manifests/demo.jsonl",
+  "source_manifest_sha256": "eba8a5133185b2603c18098593452d0c92045be3d64e774bbf2217ef2d59ad3f",
+  "task": "demo"
+}

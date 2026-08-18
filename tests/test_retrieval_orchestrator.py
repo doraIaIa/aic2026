@@ -52,7 +52,7 @@ def test_auto_runs_all_ok_providers_and_is_deterministic():
     finally:
         orchestrator.close()
     assert first["status"] == "OK"
-    assert first["route"]["reason"] == "baseline_all_available_v1"
+    assert first["route"]["reason"] == "rule_planner_v1"
     assert first["route"]["selected_lanes"] == ["visual", "asr"]
     assert first["providers"]["ocr"]["status"] == "UNAVAILABLE"
     assert first["providers"]["object"]["status"] == "UNAVAILABLE"
