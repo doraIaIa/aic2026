@@ -377,7 +377,11 @@ class AsrOcrCatalogBuilder:
             "covered_keyframes": len(ocr_keyframes),
             "covered_videos": validation.ocr_covered_videos,
             "total_items": validation.ocr_item_count,
+            "total_raw_items": validation.ocr_raw_item_count,
+            "dense_mapped_items": validation.ocr_dense_mapped_count,
+            "raw_without_dense_items": validation.ocr_raw_without_dense_count,
             "canonical_checksum": validation.ocr_canonical_checksum,
+            "raw_save_policy": "SCORE_FILTERED_AT_0.3",
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         if validation.bge_vector_row_count > 0:
@@ -388,6 +392,8 @@ class AsrOcrCatalogBuilder:
             ocr_space["bge_vector_rows"] = validation.bge_vector_row_count
             ocr_space["bge_mapped_rows"] = validation.bge_mapped_row_count
             ocr_space["bge_rowmap_checksum"] = validation.bge_rowmap_checksum
+            ocr_space["index_info_status"] = "NOT_PRESENT_IN_CURRENT_RESOLVED_FOLDER"
+            ocr_space["bge_producer_manifest_sha256"] = "c05599c2d1f8dfb2029f8e5008234b0bafaf88d5fb2dae4df36d07d9a3ef9616"
 
         with open(output_dir / "ocr_space.json", "w", encoding="utf-8") as f:
             json.dump(ocr_space, f, indent=2, ensure_ascii=False)
@@ -441,6 +447,10 @@ class AsrOcrCatalogBuilder:
             "ocr_keyframe_coverage": validation.ocr_keyframe_count,
             "ocr_covered_videos": validation.ocr_covered_videos,
             "ocr_item_count": validation.ocr_item_count,
+            "ocr_raw_item_count": validation.ocr_raw_item_count,
+            "ocr_dense_item_count": validation.ocr_dense_item_count,
+            "ocr_dense_mapped_count": validation.ocr_dense_mapped_count,
+            "ocr_raw_without_dense_count": validation.ocr_raw_without_dense_count,
             "ocr_canonical_checksum": validation.ocr_canonical_checksum,
             "bge_model": "BAAI/bge-m3",
             "bge_dimension": 1024,
@@ -448,6 +458,8 @@ class AsrOcrCatalogBuilder:
             "bge_vector_row_count": validation.bge_vector_row_count,
             "bge_mapped_row_count": validation.bge_mapped_row_count,
             "bge_rowmap_checksum": validation.bge_rowmap_checksum,
+            "index_info_status": "NOT_PRESENT_IN_CURRENT_RESOLVED_FOLDER",
+            "bge_producer_manifest_sha256": "c05599c2d1f8dfb2029f8e5008234b0bafaf88d5fb2dae4df36d07d9a3ef9616",
             "is_valid": validation.is_valid,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }

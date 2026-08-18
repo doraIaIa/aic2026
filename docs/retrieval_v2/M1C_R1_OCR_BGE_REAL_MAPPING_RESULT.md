@@ -54,7 +54,12 @@
 | **009** | 1,904 | `(1904, 1024)` | 7,798,912 | `42dd5a80d9662d3d4b862c74236c9bc1d82f774b01bf2295210d4e054ff8a3d5` | `5bf6143428bedf98ee00f666a30ce2d56a592585c42f4c8139c220d8cdee8dde` |
 | **TỔNG** | **612,813** | — | **2,509,902,384** | — | — |
 
-- **`ocr_manifest.json` SHA-256**: `c05599c2d1f8dfb2029f8e5008234b0bafaf88d5fb2dae4df36d07d9a3ef9616` (3,035,944 bytes)
+### BGE Retrieval Metadata Provenance
+- Shard format: 10 shard pairs (`embeddings_shard_000.npy` .. `009.npy` & `metadata_shard_000.json` .. `009.json`)
+- Vector dimensions: 1024-D `float32`, unit L2-normalized (`1.000000`)
+- Producer Input Manifest: `ocr_manifest.json` (SHA-256: `c05599c2d1f8dfb2029f8e5008234b0bafaf88d5fb2dae4df36d07d9a3ef9616`)
+- Index Info Status: `NOT_PRESENT_IN_CURRENT_RESOLVED_FOLDER` (provenance established via structural inspection and producer pipeline logs)
+- Raw OCR Save Policy: `SCORE_FILTERED_AT_0.3` (all available saved detections preserved in raw universe; 612,813 represents dense retrieval subset)
 
 ---
 

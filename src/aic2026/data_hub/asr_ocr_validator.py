@@ -246,12 +246,16 @@ class AsrOcrValidator:
         # 3. OCR Items Validation (if present)
         # ------------------------------------------------------------------
         ocr_item_count = 0
+        ocr_raw_item_count = 0
+        ocr_dense_item_count = 0
+        ocr_raw_without_dense_count = 0
         ocr_conf_low = 0
         ocr_conf_high = 0
         seen_ocr_uids: Set[str] = set()
 
         if ocr_items:
             ocr_item_count = len(ocr_items)
+            ocr_raw_item_count = len(ocr_items)
             for it in ocr_items:
                 if it.ocr_uid in seen_ocr_uids:
                     errors.append(f"DUPLICATE_OCR_UID: OCR UID '{it.ocr_uid}' appears multiple times")
@@ -259,6 +263,11 @@ class AsrOcrValidator:
 
                 if it.keyframe_uid not in seen_ocr_kf_uids:
                     errors.append(f"OCR_ITEM_UNKNOWN_KEYFRAME: OCR item '{it.ocr_uid}' references unknown keyframe '{it.keyframe_uid}'")
+
+                if it.dense_embedding_ref is not None:
+                    ocr_dense_item_count += 1
+                else:
+                    ocr_raw_without_dense_count += 1
 
                 if it.ocr_confidence is not None:
                     if it.ocr_confidence < 0.5:
@@ -318,6 +327,10 @@ class AsrOcrValidator:
             ocr_keyframe_count=ocr_keyframe_count,
             ocr_covered_videos=len(ocr_covered_videos),
             ocr_item_count=ocr_item_count,
+            ocr_raw_item_count=ocr_raw_item_count,
+            ocr_dense_item_count=ocr_dense_item_count,
+            ocr_dense_mapped_count=bge_mapped_row_count if bge_rowmaps else ocr_dense_item_count,
+            ocr_raw_without_dense_count=ocr_raw_without_dense_count,
             ocr_confidence_low_count=ocr_conf_low,
             ocr_confidence_high_count=ocr_conf_high,
             ocr_canonical_checksum=ocr_checksum,

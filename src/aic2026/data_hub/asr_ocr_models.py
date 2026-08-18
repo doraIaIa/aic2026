@@ -227,6 +227,10 @@ class AsrOcrValidationResult:
     ocr_keyframe_count: int = 0
     ocr_covered_videos: int = 0
     ocr_item_count: int = 0
+    ocr_raw_item_count: int = 0
+    ocr_dense_item_count: int = 0
+    ocr_dense_mapped_count: int = 0
+    ocr_raw_without_dense_count: int = 0
     ocr_confidence_low_count: int = 0
     ocr_confidence_high_count: int = 0
     ocr_canonical_checksum: str = ""

@@ -632,3 +632,109 @@ def test_bge_rowmap_checksum_determinism(mock_video_registry, mock_custom_regist
     assert hash1 == hash2
     assert len(hash1) == 64
 
+
+# ----------------------------------------------------------------------
+# 7. M1C-R2 Raw OCR Universe & Provenance Tests
+# ----------------------------------------------------------------------
+def test_raw_ocr_universe_preserves_low_confidence_and_nullable_dense_vector(mock_video_registry, mock_custom_registry):
+    """Test that raw OCR detections < 0.5 survive in canonical items and have nullable dense_embedding_ref."""
+    validator = AsrOcrValidator(
+        expected_video_count=2,
+        expected_asr_segment_count=0,
+        expected_asr_with_segments_count=0,
+        expected_asr_zero_segment_count=2,
+        expected_ocr_keyframe_count=2,
+        video_registry=mock_video_registry,
+        custom_registry=mock_custom_registry,
+    )
+
+    cov = [
+        AsrVideoCoverageRecord("L21_V001", 0, "v1_natural_series_video", 0, 60.0, 60000, "ZERO_ASR_SEGMENTS"),
+        AsrVideoCoverageRecord("L24_V008", 1, "v1_natural_series_video", 0, 45.0, 45000, "ZERO_ASR_SEGMENTS"),
+    ]
+    ocr_kf = [
+        OcrKeyframeCoverageRecord("CUSTOM:L21_V001:F15", "L21_V001", 0, 15, 500, 0.5, "000001.jpg", "path", 3),
+        OcrKeyframeCoverageRecord("CUSTOM:L24_V008:F30", "L24_V008", 1, 30, 1000, 1.0, "000001.jpg", "path", 0),
+    ]
+
+    # 3 raw items: T0 (0.92, with dense), T1 (0.85, with dense), T2 (0.35, without dense)
+    it0 = OcrItemRecord(
+        ocr_uid="OCR:CUSTOM:L21_V001:F15:T0",
+        video_id="L21_V001",
+        video_ordinal=0,
+        ordinal_space_id="v1_natural_series_video",
+        frame_space="CUSTOM",
+        keyframe_uid="CUSTOM:L21_V001:F15",
+        frame_idx=15,
+        timestamp_ms=500,
+        raw_pts_time=0.5,
+        local_text_index=0,
+        text_raw="High Conf 1",
+        text_norm="High Conf 1",
+        bbox=[[10, 10], [50, 10], [50, 20], [10, 20]],
+        ocr_confidence=0.92,
+        ocr_type="single",
+        dense_embedding_ref="bge-m3:000:0",
+        source_id="ocr_results_ppocrv6_v1",
+    )
+    it1 = OcrItemRecord(
+        ocr_uid="OCR:CUSTOM:L21_V001:F15:T1",
+        video_id="L21_V001",
+        video_ordinal=0,
+        ordinal_space_id="v1_natural_series_video",
+        frame_space="CUSTOM",
+        keyframe_uid="CUSTOM:L21_V001:F15",
+        frame_idx=15,
+        timestamp_ms=500,
+        raw_pts_time=0.5,
+        local_text_index=1,
+        text_raw="High Conf 2",
+        text_norm="High Conf 2",
+        bbox=[[10, 30], [50, 30], [50, 40], [10, 40]],
+        ocr_confidence=0.85,
+        ocr_type="single",
+        dense_embedding_ref="bge-m3:000:1",
+        source_id="ocr_results_ppocrv6_v1",
+    )
+    it2 = OcrItemRecord(
+        ocr_uid="OCR:CUSTOM:L21_V001:F15:T2",
+        video_id="L21_V001",
+        video_ordinal=0,
+        ordinal_space_id="v1_natural_series_video",
+        frame_space="CUSTOM",
+        keyframe_uid="CUSTOM:L21_V001:F15",
+        frame_idx=15,
+        timestamp_ms=500,
+        raw_pts_time=0.5,
+        local_text_index=2,
+        text_raw="Low Conf 3",
+        text_norm="Low Conf 3",
+        bbox=[[10, 50], [50, 50], [50, 60], [10, 60]],
+        ocr_confidence=0.35,
+        ocr_type="single",
+        dense_embedding_ref=None, # Preserved raw item without dense vector
+        source_id="ocr_results_ppocrv6_v1",
+    )
+
+    rm0 = OcrBgeRowmapRecord("ocr_bge_m3_single_text_v1", "000", 0, "OCR:CUSTOM:L21_V001:F15:T0", "CUSTOM:L21_V001:F15", "L21_V001", 15, 500)
+    rm1 = OcrBgeRowmapRecord("ocr_bge_m3_single_text_v1", "000", 1, "OCR:CUSTOM:L21_V001:F15:T1", "CUSTOM:L21_V001:F15", "L21_V001", 15, 500)
+
+    res = validator.validate(
+        asr_coverage=cov,
+        asr_segments=[],
+        ocr_keyframes=ocr_kf,
+        ocr_items=[it0, it1, it2],
+        bge_rowmaps=[rm0, rm1],
+    )
+
+    assert res.is_valid
+    assert res.ocr_raw_item_count == 3
+    assert res.ocr_dense_item_count == 2
+    assert res.ocr_raw_without_dense_count == 1
+    assert res.ocr_confidence_low_count == 1
+    assert res.ocr_confidence_high_count == 2
+    assert res.bge_vector_row_count == 2
+    assert res.bge_mapped_row_count == 2
+    assert res.bge_unmapped_row_count == 0
+
+

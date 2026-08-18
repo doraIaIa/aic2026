@@ -27,18 +27,21 @@
 | **OCR Mapped CUSTOM Keyframes** | **116,767** | ✅ Khớp 100% không gian M1B |
 | **OCR Missing / Extra CUSTOM Keyframes** | **0 / 0** | ✅ Giao thoa hoàn hảo 1:1 |
 | **OCR Covered Videos** | **873** | ✅ Đầy đủ 873 video |
-| **Raw OCR Text Items (Materialized)** | **612,813** | ✅ Bóc tách trực tiếp từ shards |
-| **OCR Items Confidence $\ge 0.5$** | **612,813** | ✅ Bảo toàn trong canonical items |
-| **OCR Canonical Checksum** | `01711e394da94b315bbad165016174ce545ce5ca585527cc0cee0b16e706a5b5` | ✅ Khóa mã băm |
+| **Raw OCR Text Items (Toàn vũ trụ raw)** | **676,925** | ✅ Quét trực tiếp 116,767 JSON gốc |
+| **Raw OCR Items Conf $\ge 0.5$** | **658,003** | ✅ Tập tin cậy cao |
+| **Raw OCR Items Conf $< 0.5$** | **18,922** | ✅ Bảo toàn phát hiện raw ($0.3 \le score < 0.5$) |
+| **Raw Items Không Có Dense Vector** | **64,112** | ✅ $676,925 - 612,813 = 64,112$ |
+| **OCR Canonical Checksum** | `0f8dd9f48bdb4779436ea83d2eb84ae048ed4a0ff7b3b7c2a9818d690ff00759` | ✅ Khóa mã băm |
 | **OCR BGE-M3 Dense Model Passport** | BAAI/bge-m3, 1024D, normalized=True | ✅ Đọc trực tiếp từ đĩa |
 | **OCR BGE-M3 Shards Verified** | **10 / 10** | ✅ Khớp shape & metadata 100% |
-| **OCR BGE-M3 Vector Rows** | **612,813** | ✅ Khớp nối 1:1 sang CUSTOM |
+| **OCR BGE-M3 Vector Rows** | **612,813** | ✅ Khớp nối 1:1 sang raw canonical items |
 | **OCR BGE-M3 Unmapped / Ambiguous** | **0 / 0** | ✅ 0 lỗi ánh xạ |
 | **OCR BGE Rowmap Checksum** | `4cc7cb5f1d359e3033df8b52d5341b39e23f61ac478ccafbaf317cf7579300b7` | ✅ Khóa mã băm |
+| **Producer Input Manifest SHA-256** | `c05599c2d1f8dfb2029f8e5008234b0bafaf88d5fb2dae4df36d07d9a3ef9616` | ✅ `ocr_manifest.json` |
 | **Đột biến dữ liệu gốc (Raw Mutation)** | **0** (Hoàn toàn read-only/immutable) | ✅ Bất biến |
 | **Inference / Embedding Rerun** | **0** | ✅ Zero rerun |
-| **Targeted Tests Passed** | **14 / 14** | ✅ 100% PASS |
-| **Full Pytest Suite Passed** | **217 / 217** in 12.59s | ✅ 100% PASS |
+| **Targeted Tests Passed** | **15 / 15** | ✅ 100% PASS |
+| **Full Pytest Suite Passed** | **218 / 218** in 13.43s | ✅ 100% PASS |
 
 ---
 
