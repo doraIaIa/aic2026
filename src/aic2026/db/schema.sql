@@ -86,6 +86,108 @@ CREATE TABLE IF NOT EXISTS qwen_frames (
 
 CREATE INDEX IF NOT EXISTS idx_qwen_video_frame ON qwen_frames(video_id, frame_idx);
 
+CREATE TABLE IF NOT EXISTS asr_video_coverage (
+    video_id TEXT PRIMARY KEY REFERENCES videos(video_id),
+    video_ordinal INTEGER NOT NULL,
+    ordinal_space_id TEXT NOT NULL DEFAULT 'v1_natural_series_video',
+    segment_count INTEGER NOT NULL,
+    duration_sec REAL NOT NULL,
+    duration_ms INTEGER NOT NULL,
+    asr_status TEXT NOT NULL DEFAULT 'HAS_SEGMENTS',
+    source_id TEXT NOT NULL DEFAULT 'asr_whisper_medium_vi_full_v1',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_asr_video_status ON asr_video_coverage(asr_status);
+
+CREATE TABLE IF NOT EXISTS canonical_asr_segments (
+    segment_uid TEXT PRIMARY KEY,
+    source_segment_id TEXT NOT NULL,
+    video_id TEXT NOT NULL REFERENCES videos(video_id),
+    video_ordinal INTEGER NOT NULL,
+    ordinal_space_id TEXT NOT NULL DEFAULT 'v1_natural_series_video',
+    start_ms INTEGER NOT NULL,
+    end_ms INTEGER NOT NULL,
+    start_sec REAL NOT NULL,
+    end_sec REAL NOT NULL,
+    text_raw TEXT NOT NULL,
+    text_norm TEXT NOT NULL,
+    language TEXT NOT NULL DEFAULT 'vi',
+    model TEXT NOT NULL DEFAULT 'whisper-medium',
+    avg_logprob REAL,
+    no_speech_prob REAL,
+    compression_ratio REAL,
+    batch_id TEXT,
+    source_file TEXT,
+    source_id TEXT NOT NULL DEFAULT 'asr_whisper_medium_vi_full_v1',
+    schema_version TEXT NOT NULL DEFAULT 'v1',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_canonical_asr_video ON canonical_asr_segments(video_id, start_ms, end_ms);
+CREATE INDEX IF NOT EXISTS idx_canonical_asr_ordinal ON canonical_asr_segments(video_ordinal);
+
+CREATE TABLE IF NOT EXISTS ocr_keyframes (
+    keyframe_uid TEXT PRIMARY KEY REFERENCES custom_keyframes(keyframe_uid),
+    video_id TEXT NOT NULL REFERENCES videos(video_id),
+    video_ordinal INTEGER NOT NULL,
+    frame_idx INTEGER NOT NULL,
+    timestamp_ms INTEGER NOT NULL,
+    raw_pts_time REAL NOT NULL,
+    file_name TEXT NOT NULL,
+    image_relpath TEXT NOT NULL,
+    item_count INTEGER NOT NULL DEFAULT 0,
+    source_id TEXT NOT NULL DEFAULT 'ocr_custom_manifest_v1',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_ocr_kf_video_frame ON ocr_keyframes(video_id, frame_idx);
+
+CREATE TABLE IF NOT EXISTS ocr_items (
+    ocr_uid TEXT PRIMARY KEY,
+    video_id TEXT NOT NULL REFERENCES videos(video_id),
+    video_ordinal INTEGER NOT NULL,
+    ordinal_space_id TEXT NOT NULL DEFAULT 'v1_natural_series_video',
+    frame_space TEXT NOT NULL DEFAULT 'CUSTOM',
+    keyframe_uid TEXT NOT NULL REFERENCES ocr_keyframes(keyframe_uid),
+    frame_idx INTEGER NOT NULL,
+    timestamp_ms INTEGER NOT NULL,
+    raw_pts_time REAL NOT NULL,
+    local_text_index INTEGER NOT NULL,
+    text_raw TEXT NOT NULL,
+    text_norm TEXT NOT NULL,
+    bbox_json TEXT,
+    ocr_confidence REAL,
+    ocr_type TEXT,
+    dense_embedding_ref TEXT,
+    source_id TEXT NOT NULL DEFAULT 'ocr_custom_manifest_v1',
+    schema_version TEXT NOT NULL DEFAULT 'v1',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_ocr_items_kf ON ocr_items(keyframe_uid);
+CREATE INDEX IF NOT EXISTS idx_ocr_items_video_time ON ocr_items(video_id, timestamp_ms);
+
+CREATE TABLE IF NOT EXISTS ocr_bge_rowmap (
+    rowmap_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    index_id TEXT NOT NULL DEFAULT 'ocr_bge_m3_single_text_v1',
+    shard_id TEXT NOT NULL,
+    row_in_shard INTEGER NOT NULL,
+    global_row INTEGER,
+    ocr_uid TEXT NOT NULL,
+    keyframe_uid TEXT NOT NULL,
+    video_id TEXT NOT NULL,
+    frame_idx INTEGER NOT NULL,
+    timestamp_ms INTEGER NOT NULL,
+    source_metadata_ref TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(shard_id, row_in_shard)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ocr_bge_ocr_uid ON ocr_bge_rowmap(ocr_uid);
+CREATE INDEX IF NOT EXISTS idx_ocr_bge_kf_uid ON ocr_bge_rowmap(keyframe_uid);
+
+-- Legacy tables preserved
 CREATE TABLE IF NOT EXISTS keyframes (
     keyframe_id TEXT PRIMARY KEY,
     video_id TEXT NOT NULL REFERENCES videos(video_id),

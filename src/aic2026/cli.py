@@ -45,6 +45,9 @@ from aic2026.asr.whisper_runner import (
     validate_asr_shard_artifact,
 )
 from aic2026.data_hub import (
+    AsrOcrCatalogBuilder,
+    AsrOcrRegistry,
+    AsrOcrValidator,
     CustomKeyframeRegistry,
     CustomKeyframeValidator,
     VideoRegistry,
@@ -602,6 +605,63 @@ def cmd_validate_custom_qwen_catalog(args: argparse.Namespace) -> int:
         return 3
 
 
+def cmd_build_asr_ocr_catalog(args: argparse.Namespace) -> int:
+    try:
+        video_registry = VideoRegistry.load_from_directory(args.video_catalog, validate=True)
+        custom_registry = CustomKeyframeRegistry.load_from_directory(args.custom_catalog, video_registry=video_registry, validate=True)
+
+        builder = AsrOcrCatalogBuilder(video_registry=video_registry, custom_registry=custom_registry)
+        validation = builder.materialize(
+            output_dir=Path(args.out),
+            asr_videos_path=Path(args.asr_videos),
+            asr_segments_path=Path(args.asr_segments),
+            ocr_manifest_path=Path(args.ocr_manifest),
+        )
+        _json_print({
+            "status": "BUILT",
+            "asr_video_rows": validation.asr_video_count,
+            "asr_segments": validation.asr_segment_count,
+            "asr_videos_with_segments": validation.asr_videos_with_segments,
+            "asr_zero_segment_videos": validation.asr_zero_segment_videos,
+            "ocr_keyframe_coverage": validation.ocr_keyframe_count,
+            "output_directory": str(args.out),
+            "is_valid": validation.is_valid,
+        })
+        return 0
+    except Exception as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+
+
+def cmd_validate_asr_ocr_catalog(args: argparse.Namespace) -> int:
+    try:
+        video_registry = None
+        if args.video_catalog:
+            video_registry = VideoRegistry.load_from_directory(args.video_catalog, validate=False)
+
+        custom_registry = None
+        if args.custom_catalog:
+            custom_registry = CustomKeyframeRegistry.load_from_directory(args.custom_catalog, video_registry=video_registry, validate=False)
+
+        registry = AsrOcrRegistry.load_from_dir(Path(args.catalog_dir))
+        validator = AsrOcrValidator(
+            video_registry=video_registry,
+            custom_registry=custom_registry,
+        )
+        result = validator.validate(
+            asr_coverage=list(registry._asr_coverage_by_video.values()),
+            asr_segments=list(registry._asr_segments_by_uid.values()),
+            ocr_keyframes=list(registry._ocr_kf_by_uid.values()),
+            ocr_items=list(registry._ocr_items_by_uid.values()),
+            bge_rowmaps=list(registry._bge_by_ocr_uid.values()),
+        )
+        _json_print(result.to_dict())
+        return 0 if result.is_valid else 3
+    except Exception as exc:
+        _json_print({"is_valid": False, "errors": [str(exc)]})
+        return 3
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aic", description="AIC 2026 reliability/control-plane CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -633,6 +693,21 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--expected-count", type=int, default=116767)
     p.add_argument("--expected-video-count", type=int, help="số video kỳ vọng (mặc định 873 hoặc từ video catalog)")
     p.set_defaults(func=cmd_validate_custom_qwen_catalog)
+
+    p = sub.add_parser("build-asr-ocr-catalog", help="xây dựng canonical ASR intervals và OCR keyframe evidence")
+    p.add_argument("--video-catalog", required=True, help="thư mục canonical video catalog (M1A)")
+    p.add_argument("--custom-catalog", required=True, help="thư mục canonical custom keyframes catalog (M1B)")
+    p.add_argument("--asr-videos", required=True, help="đường dẫn asr_videos.jsonl")
+    p.add_argument("--asr-segments", required=True, help="đường dẫn asr_segments.jsonl")
+    p.add_argument("--ocr-manifest", required=True, help="đường dẫn manifest.jsonl OCR")
+    p.add_argument("--out", required=True, help="thư mục output")
+    p.set_defaults(func=cmd_build_asr_ocr_catalog)
+
+    p = sub.add_parser("validate-asr-ocr-catalog", help="xác thực fail-closed cho canonical ASR và OCR catalog")
+    p.add_argument("--catalog-dir", required=True, help="thư mục chứa ASR và OCR canonical artifacts")
+    p.add_argument("--video-catalog", help="thư mục video catalog để đối soát ordinal")
+    p.add_argument("--custom-catalog", help="thư mục custom keyframes catalog để đối soát keyframe UIDs")
+    p.set_defaults(func=cmd_validate_asr_ocr_catalog)
 
     p = sub.add_parser("doctor", help="check environment/path prerequisites")
     p.add_argument("--config", required=True)
