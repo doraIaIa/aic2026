@@ -1,0 +1,3440 @@
+{
+  "audit_version": "1.1-verification",
+  "repository": {
+    "root": "F:\\AIC_DEV\\aic2026",
+    "branch": "main",
+    "head": "fa470d38892bc31b87e6b460c3b020534007e490",
+    "git_tracked_total": 129,
+    "tracked_deleted_in_working_tree": 17,
+    "tracked_present_in_working_tree": 112,
+    "on_disk_untracked": 45,
+    "total_files_scanned": 157
+  },
+  "consistency_checks": {
+    "math_reconciliation": "PASS (112 tracked present + 45 untracked = 157 scanned)",
+    "head_reproducibility": "FAIL (178 tests rely on 23+ critical untracked files not in HEAD)",
+    "duplicate_detection": "VERIFIED (2 exact duplicate content pairs detected)",
+    "agents_mandatory_path_conflict": "DETECTED (docs/PROJECT_STATE.md mandated by AGENTS.md, cannot move in C2 without AGENTS.md update)"
+  },
+  "untracked_critical": [
+    {
+      "path": "AIC2026_RECOVERED_MASTER_PLAN.md",
+      "role": "CURRENT_DESIGN_AUTHORITY",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "PROMPT_REPO_ARCHAEOLOGY_AUDIT.md",
+      "role": "CURRENT_DESIGN_AUTHORITY",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "configs\\data_paths.json",
+      "role": "CURRENT_DATA_CONTRACT",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": true,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": true,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "configs\\local.toml",
+      "role": "CURRENT_REUSABLE_FOUNDATION",
+      "exists_in_head": false,
+      "imported_by_tracked_code": true,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": true,
+      "required_by_architecture": true,
+      "contains_machine_local_config": true,
+      "safe_to_commit": false,
+      "must_remain_local_only": true,
+      "recommended_action": "KEEP_LOCAL_GITIGNORE"
+    },
+    {
+      "path": "docs\\AIC2026_RECOVERED_MASTER_PLAN.md",
+      "role": "CURRENT_DESIGN_AUTHORITY",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "docs\\DATA_PATHS.md",
+      "role": "CURRENT_DATA_CONTRACT",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "docs\\deep-research-report.md",
+      "role": "CURRENT_DESIGN_AUTHORITY",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "manifests\\demo.jsonl",
+      "role": "CURRENT_DATA_CONTRACT",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": true,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "manifests\\shards\\demo\\shard-000.json",
+      "role": "CURRENT_DATA_CONTRACT",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "manifests\\shards\\demo\\shard-001.json",
+      "role": "CURRENT_DATA_CONTRACT",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "manifests\\shards\\demo\\shard-002.json",
+      "role": "CURRENT_DATA_CONTRACT",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "plan\\00_MASTER_ARCHITECTURE.md",
+      "role": "CURRENT_DESIGN_AUTHORITY",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "plan\\01_DATA_HUB_MAPPING.md",
+      "role": "CURRENT_DESIGN_AUTHORITY",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "plan\\02_QUERY_BRAIN_SEARCH_MODES.md",
+      "role": "CURRENT_DESIGN_AUTHORITY",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "plan\\03_SEARCH_LANES_TECH_STACK.md",
+      "role": "CURRENT_DESIGN_AUTHORITY",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "plan\\04_TEMPORAL_MEDIA_INSPECTOR.md",
+      "role": "CURRENT_DESIGN_AUTHORITY",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "plan\\05_IMPLEMENTATION_EVALUATION_ROADMAP.md",
+      "role": "CURRENT_DESIGN_AUTHORITY",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "plan\\README.md",
+      "role": "CURRENT_DESIGN_AUTHORITY",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "plan\\deep-research-report.md",
+      "role": "CURRENT_DESIGN_AUTHORITY",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "src\\aic2026\\core\\data_registry.py",
+      "role": "CURRENT_REUSABLE_FOUNDATION",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": true,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "src\\aic2026\\evaluation\\annotation_assist.py",
+      "role": "CURRENT_PRODUCTION",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "src\\aic2026\\evaluation\\dataset.py",
+      "role": "CURRENT_PRODUCTION",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "src\\aic2026\\evaluation\\labels.py",
+      "role": "CURRENT_PRODUCTION",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "src\\aic2026\\evaluation\\prepare_review.py",
+      "role": "CURRENT_PRODUCTION",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\planner.py",
+      "role": "CURRENT_PRODUCTION",
+      "exists_in_head": false,
+      "imported_by_tracked_code": true,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\providers\\object.py",
+      "role": "CURRENT_PRODUCTION",
+      "exists_in_head": false,
+      "imported_by_tracked_code": true,
+      "imported_by_untracked_code": false,
+      "used_by_tests": false,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "src\\aic2026\\search\\build_object_index.py",
+      "role": "CURRENT_PRODUCTION",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": true,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "src\\aic2026\\workspace.py",
+      "role": "CURRENT_PRODUCTION",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": true,
+      "used_by_cli_api": true,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "tests\\test_data_registry.py",
+      "role": "CURRENT_TEST",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": true,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "tests\\test_object_provider.py",
+      "role": "CURRENT_TEST",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": true,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    },
+    {
+      "path": "tests\\test_workspace.py",
+      "role": "CURRENT_TEST",
+      "exists_in_head": false,
+      "imported_by_tracked_code": false,
+      "imported_by_untracked_code": false,
+      "used_by_tests": true,
+      "used_by_cli_api": false,
+      "required_by_architecture": true,
+      "contains_machine_local_config": false,
+      "safe_to_commit": true,
+      "must_remain_local_only": false,
+      "recommended_action": "COMMIT_IN_M0_BASELINE"
+    }
+  ],
+  "duplicate_pairs": [
+    {
+      "sha256": "5d2c5e7428ce3d80ddaa39ae9f3319cc5576070c41d84a931bc336a9caaf774d",
+      "size_bytes": 13390,
+      "files": [
+        "AIC2026_RECOVERED_MASTER_PLAN.md",
+        "docs\\AIC2026_RECOVERED_MASTER_PLAN.md"
+      ]
+    },
+    {
+      "sha256": "5e88ec3265d898ade3fc5c66a75241c9a68546d9fe82e7f392b81529f1f0de3d",
+      "size_bytes": 29434,
+      "files": [
+        "docs\\deep-research-report.md",
+        "plan\\deep-research-report.md"
+      ]
+    }
+  ],
+  "mandatory_path_constraints": [
+    {
+      "mandatory_path": "AGENTS.md",
+      "referenced_in_agents": "Section 1",
+      "current_status": "EXISTS_MODIFIED",
+      "move_safe": false,
+      "precondition": "None (Root Constitution)"
+    },
+    {
+      "mandatory_path": "docs/PROJECT_STATE.md",
+      "referenced_in_agents": "Section 1 & Rule 22",
+      "current_status": "EXISTS_TRACKED",
+      "move_safe": false,
+      "precondition": "Must update AGENTS.md Section 1 & Rule 22 before moving to docs/archive/"
+    },
+    {
+      "mandatory_path": "docs/DATA_CONTRACT_LOCK.md",
+      "referenced_in_agents": "Section 1 & Rule 22",
+      "current_status": "EXISTS_TRACKED",
+      "move_safe": false,
+      "precondition": "Do not move (Active Data Contract Lock)"
+    },
+    {
+      "mandatory_path": "plan/README.md",
+      "referenced_in_agents": "Section 1",
+      "current_status": "EXISTS_UNTRACKED",
+      "move_safe": false,
+      "precondition": "Must commit in M0 Baseline"
+    },
+    {
+      "mandatory_path": "plan/00_MASTER_ARCHITECTURE.md",
+      "referenced_in_agents": "Section 1",
+      "current_status": "EXISTS_UNTRACKED",
+      "move_safe": false,
+      "precondition": "Must commit in M0 Baseline"
+    }
+  ],
+  "files_or_groups": [
+    {
+      "path": ".env.example",
+      "is_tracked": true,
+      "role_status": "CURRENT_REUSABLE_FOUNDATION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Core package definitions and configuration files",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": ".gitignore",
+      "is_tracked": true,
+      "role_status": "CURRENT_REUSABLE_FOUNDATION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "scripts\\create_github_repo_instructions.md",
+        "PROMPT_REPO_ARCHAEOLOGY_AUDIT.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Core package definitions and configuration files",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "AGENTS.md",
+      "is_tracked": true,
+      "role_status": "CURRENT_DESIGN_AUTHORITY",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_AND_MARK_AUTHORITY",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "docs\\PROJECT_OVERVIEW.md",
+        "PROMPT_REPO_ARCHAEOLOGY_AUDIT.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Repository engineering constitution (1085 lines)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "AIC2026_RECOVERED_MASTER_PLAN.md",
+      "is_tracked": false,
+      "role_status": "CURRENT_DESIGN_AUTHORITY",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "ROOT_COPY",
+      "duplicate_of": "docs\\AIC2026_RECOVERED_MASTER_PLAN.md",
+      "risk_if_removed": "HIGH",
+      "reason": "Consolidated Master Plan for AIC 2026 Remake",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "PROMPT_REPO_ARCHAEOLOGY_AUDIT.md",
+      "is_tracked": false,
+      "role_status": "CURRENT_DESIGN_AUTHORITY",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Audit prompt specification",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "README.md",
+      "is_tracked": true,
+      "role_status": "CURRENT_DESIGN_AUTHORITY",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_AND_MARK_AUTHORITY",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "docs\\deep-research-report.md",
+        "plan\\README.md",
+        "plan\\deep-research-report.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Master research report and repository overview",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "START_HERE.md",
+      "is_tracked": true,
+      "role_status": "LEGACY_STILL_REFERENCED",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_BUT_DEMOTE",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Historical state and execution docs from earlier phases",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "artifacts\\incoming\\.gitkeep",
+      "is_tracked": true,
+      "role_status": "CURRENT_REUSABLE_FOUNDATION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Artifact directory structure with .gitkeep",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "artifacts\\rejected\\.gitkeep",
+      "is_tracked": true,
+      "role_status": "CURRENT_REUSABLE_FOUNDATION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Artifact directory structure with .gitkeep",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "artifacts\\verified\\.gitkeep",
+      "is_tracked": true,
+      "role_status": "CURRENT_REUSABLE_FOUNDATION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Artifact directory structure with .gitkeep",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "configs\\base.toml",
+      "is_tracked": true,
+      "role_status": "CURRENT_REUSABLE_FOUNDATION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\core\\config.py"
+      ],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Core package definitions and configuration files",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "configs\\colab.example.toml",
+      "is_tracked": true,
+      "role_status": "CURRENT_REUSABLE_FOUNDATION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Core package definitions and configuration files",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "configs\\data_paths.json",
+      "is_tracked": false,
+      "role_status": "CURRENT_DATA_CONTRACT",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_AND_MARK_AUTHORITY",
+      "current_references": [
+        "src\\aic2026\\core\\data_registry.py"
+      ],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Master Data Paths Registry & Data Contract Lock",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "configs\\kaggle.example.toml",
+      "is_tracked": true,
+      "role_status": "CURRENT_REUSABLE_FOUNDATION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Core package definitions and configuration files",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "configs\\local.example.toml",
+      "is_tracked": true,
+      "role_status": "CURRENT_REUSABLE_FOUNDATION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "README.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Core package definitions and configuration files",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "configs\\local.toml",
+      "is_tracked": false,
+      "role_status": "CURRENT_REUSABLE_FOUNDATION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\search\\build_asr_index.py",
+        "src\\aic2026\\search\\asr.py",
+        "scripts\\validation\\validate_m0a_mapping.py"
+      ],
+      "test_references": [],
+      "cli_api_references": [
+        "src\\aic2026\\search\\api.py"
+      ],
+      "doc_references": [
+        "START_HERE.md",
+        "docs\\RUNBOOK.md",
+        "README.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Core package definitions and configuration files",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "docs\\AIC2026_HIERARCHICAL_RETRIEVAL_AUDIT_TAXONOMY_V1.md",
+      "is_tracked": false,
+      "role_status": "LINEAGE_EVIDENCE",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "plan\\README.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Authoritative data audit reports",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "docs\\AIC2026_RECOVERED_MASTER_PLAN.md",
+      "is_tracked": false,
+      "role_status": "CURRENT_DESIGN_AUTHORITY",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_AND_MARK_AUTHORITY",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Consolidated Master Plan for AIC 2026 Remake",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "docs\\AUDIT_OCR_FRIEND_DATASET.md",
+      "is_tracked": false,
+      "role_status": "LINEAGE_EVIDENCE",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "plan\\README.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Authoritative data audit reports",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "docs\\AUDIT_OCR_SINGLE_TEXT_RETRIEVAL.md",
+      "is_tracked": false,
+      "role_status": "LINEAGE_EVIDENCE",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Authoritative data audit reports",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "docs\\AUDIT_VIDEO_PROGRAM_CLASSIFICATION_AND_OVERLAP.md",
+      "is_tracked": false,
+      "role_status": "LINEAGE_EVIDENCE",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Authoritative data audit reports",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "docs\\BTC_PROVIDED_DATA_AUDIT_REPORT.md",
+      "is_tracked": false,
+      "role_status": "LINEAGE_EVIDENCE",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "plan\\README.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Authoritative data audit reports",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "docs\\CLOUD_EXECUTION.md",
+      "is_tracked": true,
+      "role_status": "LEGACY_STILL_REFERENCED",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_BUT_DEMOTE",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "docs\\PROJECT_OVERVIEW.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Historical state and execution docs from earlier phases",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "docs\\DATA_CONTRACT.md",
+      "is_tracked": true,
+      "role_status": "CURRENT_DATA_CONTRACT",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "docs\\PROJECT_OVERVIEW.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "API and Data Contract specifications",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "docs\\DATA_CONTRACT_LOCK.md",
+      "is_tracked": true,
+      "role_status": "CURRENT_DATA_CONTRACT",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_AND_MARK_AUTHORITY",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "docs\\PROJECT_OVERVIEW.md",
+        "AGENTS.md",
+        "PROMPT_REPO_ARCHAEOLOGY_AUDIT.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Master Data Paths Registry & Data Contract Lock",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "docs\\DATA_PATHS.md",
+      "is_tracked": false,
+      "role_status": "CURRENT_DATA_CONTRACT",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_AND_MARK_AUTHORITY",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Master Data Paths Registry & Data Contract Lock",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "docs\\EVALUATION.md",
+      "is_tracked": true,
+      "role_status": "LEGACY_STILL_REFERENCED",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_BUT_DEMOTE",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Historical state and execution docs from earlier phases",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "docs\\PROJECT_OVERVIEW.md",
+      "is_tracked": false,
+      "role_status": "LEGACY_STILL_REFERENCED",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_BUT_DEMOTE",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Historical state and execution docs from earlier phases",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "docs\\PROJECT_STATE.md",
+      "is_tracked": true,
+      "role_status": "LEGACY_STILL_REFERENCED",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_BUT_DEMOTE",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "docs\\PROJECT_OVERVIEW.md",
+        "AGENTS.md",
+        "PROMPT_REPO_ARCHAEOLOGY_AUDIT.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Historical state and execution docs from earlier phases",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "docs\\RETRIEVAL_CONTRACT.md",
+      "is_tracked": true,
+      "role_status": "CURRENT_DATA_CONTRACT",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "docs\\RUNBOOK.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "API and Data Contract specifications",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "docs\\RUNBOOK.md",
+      "is_tracked": true,
+      "role_status": "CURRENT_DATA_CONTRACT",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "docs\\PROJECT_OVERVIEW.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "API and Data Contract specifications",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "docs\\deep-research-report.md",
+      "is_tracked": false,
+      "role_status": "CURRENT_DESIGN_AUTHORITY",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_AND_MARK_AUTHORITY",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "DERIVED_COPY",
+      "duplicate_of": "plan\\deep-research-report.md",
+      "risk_if_removed": "HIGH",
+      "reason": "Master research report and repository overview",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "docs\\openapi-retrieval-v1.yaml",
+      "is_tracked": true,
+      "role_status": "CURRENT_DATA_CONTRACT",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "docs\\RETRIEVAL_CONTRACT.md",
+        "docs\\AIC2026_RECOVERED_MASTER_PLAN.md",
+        "docs\\RUNBOOK.md",
+        "AIC2026_RECOVERED_MASTER_PLAN.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "API and Data Contract specifications",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "manifests\\demo.jsonl",
+      "is_tracked": false,
+      "role_status": "CURRENT_DATA_CONTRACT",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "manifests\\shards\\demo\\shard-002.json",
+        "manifests\\shards\\demo\\shard-000.json",
+        "manifests\\shards\\demo\\shard-001.json"
+      ],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "START_HERE.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Manifest schemas and test fixtures",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "manifests\\examples\\demo.jsonl",
+      "is_tracked": true,
+      "role_status": "CURRENT_DATA_CONTRACT",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "README.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Manifest schemas and test fixtures",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "manifests\\shards\\demo\\shard-000.json",
+      "is_tracked": false,
+      "role_status": "CURRENT_DATA_CONTRACT",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "START_HERE.md",
+        "README.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Manifest schemas and test fixtures",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "manifests\\shards\\demo\\shard-001.json",
+      "is_tracked": false,
+      "role_status": "CURRENT_DATA_CONTRACT",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Manifest schemas and test fixtures",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "manifests\\shards\\demo\\shard-002.json",
+      "is_tracked": false,
+      "role_status": "CURRENT_DATA_CONTRACT",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Manifest schemas and test fixtures",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "notebooks\\colab_asr_whisper_medium_full_corpus_v1.ipynb",
+      "is_tracked": false,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Canonical production notebooks for Whisper and Kaggle worker",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "notebooks\\kaggle_asr_whisper_medium_worker.ipynb",
+      "is_tracked": false,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Canonical production notebooks for Whisper and Kaggle worker",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "plan\\00_MASTER_ARCHITECTURE.md",
+      "is_tracked": false,
+      "role_status": "CURRENT_DESIGN_AUTHORITY",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_AND_MARK_AUTHORITY",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "docs\\deep-research-report.md",
+        "plan\\README.md",
+        "plan\\deep-research-report.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Official Master Architecture suite for Retrieval V2",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "plan\\01_DATA_HUB_MAPPING.md",
+      "is_tracked": false,
+      "role_status": "CURRENT_DESIGN_AUTHORITY",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_AND_MARK_AUTHORITY",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "plan\\04_TEMPORAL_MEDIA_INSPECTOR.md",
+        "plan\\deep-research-report.md",
+        "plan\\03_SEARCH_LANES_TECH_STACK.md",
+        "docs\\deep-research-report.md",
+        "plan\\02_QUERY_BRAIN_SEARCH_MODES.md",
+        "plan\\README.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Official Master Architecture suite for Retrieval V2",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "plan\\02_QUERY_BRAIN_SEARCH_MODES.md",
+      "is_tracked": false,
+      "role_status": "CURRENT_DESIGN_AUTHORITY",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_AND_MARK_AUTHORITY",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "plan\\04_TEMPORAL_MEDIA_INSPECTOR.md",
+        "plan\\deep-research-report.md",
+        "plan\\03_SEARCH_LANES_TECH_STACK.md",
+        "docs\\deep-research-report.md",
+        "plan\\README.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Official Master Architecture suite for Retrieval V2",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "plan\\03_SEARCH_LANES_TECH_STACK.md",
+      "is_tracked": false,
+      "role_status": "CURRENT_DESIGN_AUTHORITY",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_AND_MARK_AUTHORITY",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "docs\\deep-research-report.md",
+        "plan\\README.md",
+        "plan\\02_QUERY_BRAIN_SEARCH_MODES.md",
+        "plan\\deep-research-report.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Official Master Architecture suite for Retrieval V2",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "plan\\04_TEMPORAL_MEDIA_INSPECTOR.md",
+      "is_tracked": false,
+      "role_status": "CURRENT_DESIGN_AUTHORITY",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_AND_MARK_AUTHORITY",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "plan\\deep-research-report.md",
+        "plan\\03_SEARCH_LANES_TECH_STACK.md",
+        "docs\\deep-research-report.md",
+        "plan\\02_QUERY_BRAIN_SEARCH_MODES.md",
+        "plan\\README.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Official Master Architecture suite for Retrieval V2",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "plan\\05_IMPLEMENTATION_EVALUATION_ROADMAP.md",
+      "is_tracked": false,
+      "role_status": "CURRENT_DESIGN_AUTHORITY",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_AND_MARK_AUTHORITY",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "plan\\deep-research-report.md",
+        "plan\\03_SEARCH_LANES_TECH_STACK.md",
+        "docs\\deep-research-report.md",
+        "plan\\02_QUERY_BRAIN_SEARCH_MODES.md",
+        "plan\\README.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Official Master Architecture suite for Retrieval V2",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "plan\\README.md",
+      "is_tracked": false,
+      "role_status": "CURRENT_DESIGN_AUTHORITY",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_AND_MARK_AUTHORITY",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "docs\\deep-research-report.md",
+        "plan\\deep-research-report.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Official Master Architecture suite for Retrieval V2",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "plan\\deep-research-report.md",
+      "is_tracked": false,
+      "role_status": "CURRENT_DESIGN_AUTHORITY",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP_AND_MARK_AUTHORITY",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "ROOT_COPY",
+      "duplicate_of": "docs\\deep-research-report.md",
+      "risk_if_removed": "HIGH",
+      "reason": "Official Master Architecture suite for Retrieval V2",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "pyproject.toml",
+      "is_tracked": true,
+      "role_status": "CURRENT_REUSABLE_FOUNDATION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "PROMPT_REPO_ARCHAEOLOGY_AUDIT.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Core package definitions and configuration files",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "scripts\\asr_worker_colab_kaggle.md",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Bootstrap scripts and contract type generators",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "scripts\\bootstrap_linux.sh",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Bootstrap scripts and contract type generators",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "scripts\\bootstrap_windows.ps1",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "START_HERE.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Bootstrap scripts and contract type generators",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "scripts\\create_github_repo_instructions.md",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "START_HERE.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Bootstrap scripts and contract type generators",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "scripts\\generate_retrieval_contract_types.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_retrieval_contract.py"
+      ],
+      "cli_api_references": [],
+      "doc_references": [
+        "docs\\RETRIEVAL_CONTRACT.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Bootstrap scripts and contract type generators",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "scripts\\validation\\validate_m0a_mapping.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Bootstrap scripts and contract type generators",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026.egg-info\\PKG-INFO",
+      "is_tracked": false,
+      "role_status": "BUILD_OUTPUT",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "ADD_TO_GITIGNORE_CANDIDATE",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Setuptools editable build metadata",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "src\\aic2026.egg-info\\SOURCES.txt",
+      "is_tracked": false,
+      "role_status": "BUILD_OUTPUT",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "ADD_TO_GITIGNORE_CANDIDATE",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Setuptools editable build metadata",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "src\\aic2026.egg-info\\dependency_links.txt",
+      "is_tracked": false,
+      "role_status": "BUILD_OUTPUT",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "ADD_TO_GITIGNORE_CANDIDATE",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Setuptools editable build metadata",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "src\\aic2026.egg-info\\entry_points.txt",
+      "is_tracked": false,
+      "role_status": "BUILD_OUTPUT",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "ADD_TO_GITIGNORE_CANDIDATE",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Setuptools editable build metadata",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "src\\aic2026.egg-info\\requires.txt",
+      "is_tracked": false,
+      "role_status": "BUILD_OUTPUT",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "ADD_TO_GITIGNORE_CANDIDATE",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Setuptools editable build metadata",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "src\\aic2026.egg-info\\top_level.txt",
+      "is_tracked": false,
+      "role_status": "BUILD_OUTPUT",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "ADD_TO_GITIGNORE_CANDIDATE",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Setuptools editable build metadata",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "src\\aic2026\\__init__.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "CLI / Workspace entrypoint",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\asr\\__init__.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Whisper ASR extraction, shard merging and review tools",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\asr\\fts.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\asr\\review.py"
+      ],
+      "test_references": [
+        "tests\\test_asr_fts.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Whisper ASR extraction, shard merging and review tools",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\asr\\manifest.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\asr\\review.py",
+        "src\\aic2026\\asr\\shard.py",
+        "src\\aic2026\\asr\\merge.py",
+        "src\\aic2026\\asr\\whisper_runner.py",
+        "src\\aic2026\\asr\\fts.py"
+      ],
+      "test_references": [
+        "tests\\test_asr_fts.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Whisper ASR extraction, shard merging and review tools",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\asr\\merge.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Whisper ASR extraction, shard merging and review tools",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\asr\\review.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Whisper ASR extraction, shard merging and review tools",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\asr\\shard.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\asr\\whisper_runner.py"
+      ],
+      "test_references": [],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Whisper ASR extraction, shard merging and review tools",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\asr\\whisper_runner.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\asr\\merge.py",
+        "src\\aic2026\\asr\\review.py",
+        "src\\aic2026\\asr\\fts.py"
+      ],
+      "test_references": [],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Whisper ASR extraction, shard merging and review tools",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\audit\\__init__.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Audit tools for discovery, modalities, and mapping",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\audit\\clip.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_audit.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Audit tools for discovery, modalities, and mapping",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\audit\\discovery.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_audit.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Audit tools for discovery, modalities, and mapping",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\audit\\mapping.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_audit.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Audit tools for discovery, modalities, and mapping",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\audit\\modalities.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_audit.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Audit tools for discovery, modalities, and mapping",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\audit\\report.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_audit.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Audit tools for discovery, modalities, and mapping",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\cli.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_eval_cli.py"
+      ],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "CLI / Workspace entrypoint",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\core\\__init__.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_REUSABLE_FOUNDATION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Core utilities: paths, atomic, hashing, config, data_registry",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\core\\atomic.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_REUSABLE_FOUNDATION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\asr\\review.py",
+        "src\\aic2026\\evaluation\\runner.py",
+        "src\\aic2026\\evaluation\\importers.py",
+        "src\\aic2026\\asr\\shard.py",
+        "src\\aic2026\\search\\build_asr_index.py",
+        "src\\aic2026\\asr\\merge.py",
+        "src\\aic2026\\evaluation\\review.py",
+        "src\\aic2026\\asr\\whisper_runner.py",
+        "src\\aic2026\\retrieval\\clip_faiss.py",
+        "src\\aic2026\\jobs\\checkpoint.py",
+        "src\\aic2026\\jobs\\manifest.py",
+        "src\\aic2026\\jobs\\artifact.py",
+        "src\\aic2026\\asr\\manifest.py",
+        "src\\aic2026\\asr\\fts.py"
+      ],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Core utilities: paths, atomic, hashing, config, data_registry",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\core\\config.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_REUSABLE_FOUNDATION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\search\\build_asr_index.py",
+        "src\\aic2026\\evaluation\\annotation_assist.py",
+        "src\\aic2026\\evaluation\\prepare_video_review.py",
+        "src\\aic2026\\evaluation\\prepare_review.py",
+        "src\\aic2026\\evaluation\\apply_verification.py",
+        "src\\aic2026\\search\\asr.py"
+      ],
+      "test_references": [],
+      "cli_api_references": [
+        "src\\aic2026\\search\\api.py",
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Core utilities: paths, atomic, hashing, config, data_registry",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\core\\data_registry.py",
+      "is_tracked": false,
+      "role_status": "CURRENT_REUSABLE_FOUNDATION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_data_registry.py"
+      ],
+      "cli_api_references": [],
+      "doc_references": [
+        "docs\\DATA_PATHS.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Core utilities: paths, atomic, hashing, config, data_registry",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "src\\aic2026\\core\\hashing.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_REUSABLE_FOUNDATION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\asr\\review.py",
+        "src\\aic2026\\evaluation\\runner.py",
+        "src\\aic2026\\evaluation\\importers.py",
+        "src\\aic2026\\asr\\shard.py",
+        "src\\aic2026\\jobs\\runner.py",
+        "src\\aic2026\\retrieval\\providers\\visual.py",
+        "src\\aic2026\\search\\build_asr_index.py",
+        "src\\aic2026\\asr\\merge.py",
+        "src\\aic2026\\evaluation\\review.py",
+        "src\\aic2026\\asr\\whisper_runner.py",
+        "src\\aic2026\\retrieval\\providers\\object.py",
+        "src\\aic2026\\retrieval\\clip_faiss.py",
+        "src\\aic2026\\jobs\\manifest.py",
+        "src\\aic2026\\jobs\\artifact.py",
+        "src\\aic2026\\asr\\manifest.py",
+        "src\\aic2026\\asr\\fts.py",
+        "src\\aic2026\\retrieval\\providers\\asr.py"
+      ],
+      "test_references": [
+        "tests\\test_eval_review.py",
+        "tests\\test_eval_importer.py",
+        "tests\\test_eval_runner.py"
+      ],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Core utilities: paths, atomic, hashing, config, data_registry",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\core\\paths.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_REUSABLE_FOUNDATION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\retrieval\\contract.py",
+        "src\\aic2026\\retrieval\\providers\\visual.py",
+        "src\\aic2026\\evaluation\\importers.py",
+        "src\\aic2026\\asr\\shard.py",
+        "src\\aic2026\\search\\build_asr_index.py",
+        "src\\aic2026\\evaluation\\annotation_assist.py",
+        "src\\aic2026\\evaluation\\prepare_video_review.py",
+        "src\\aic2026\\asr\\whisper_runner.py",
+        "src\\aic2026\\evaluation\\prepare_review.py",
+        "src\\aic2026\\retrieval\\clip_faiss.py",
+        "src\\aic2026\\evaluation\\apply_verification.py",
+        "src\\aic2026\\search\\asr.py",
+        "src\\aic2026\\jobs\\manifest.py",
+        "src\\aic2026\\asr\\manifest.py",
+        "src\\aic2026\\retrieval\\providers\\asr.py",
+        "src\\aic2026\\evaluation\\contract.py"
+      ],
+      "test_references": [
+        "tests\\test_paths.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\search\\api.py",
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Core utilities: paths, atomic, hashing, config, data_registry",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\db\\__init__.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "CLI / Workspace entrypoint",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\db\\schema.sql",
+      "is_tracked": true,
+      "role_status": "CURRENT_DATA_CONTRACT",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_asr_search_tool.py"
+      ],
+      "cli_api_references": [],
+      "doc_references": [
+        "docs\\PROJECT_OVERVIEW.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "SQLite Data Hub schema definition",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\evaluation\\__init__.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Competition scoring harness for KIS, QA, TRAKE and benchmark validation",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\evaluation\\annotation_assist.py",
+      "is_tracked": false,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Competition scoring harness for KIS, QA, TRAKE and benchmark validation",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "src\\aic2026\\evaluation\\apply_verification.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Competition scoring harness for KIS, QA, TRAKE and benchmark validation",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\evaluation\\contract.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\asr\\review.py",
+        "src\\aic2026\\evaluation\\runner.py",
+        "src\\aic2026\\evaluation\\importers.py",
+        "src\\aic2026\\evaluation\\review.py",
+        "src\\aic2026\\evaluation\\scoring.py"
+      ],
+      "test_references": [
+        "tests\\test_eval_contract.py",
+        "tests\\test_eval_importer.py",
+        "tests\\test_eval_scoring.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Competition scoring harness for KIS, QA, TRAKE and benchmark validation",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\evaluation\\dataset.py",
+      "is_tracked": false,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Competition scoring harness for KIS, QA, TRAKE and benchmark validation",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "src\\aic2026\\evaluation\\importers.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\evaluation\\dataset.py"
+      ],
+      "test_references": [
+        "tests\\test_eval_importer.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Competition scoring harness for KIS, QA, TRAKE and benchmark validation",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\evaluation\\labels.py",
+      "is_tracked": false,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Competition scoring harness for KIS, QA, TRAKE and benchmark validation",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "src\\aic2026\\evaluation\\prepare_review.py",
+      "is_tracked": false,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Competition scoring harness for KIS, QA, TRAKE and benchmark validation",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "src\\aic2026\\evaluation\\prepare_video_review.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Competition scoring harness for KIS, QA, TRAKE and benchmark validation",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\evaluation\\review.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\asr\\manifest.py"
+      ],
+      "test_references": [
+        "tests\\test_eval_review.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Competition scoring harness for KIS, QA, TRAKE and benchmark validation",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\evaluation\\runner.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\evaluation\\review.py"
+      ],
+      "test_references": [
+        "tests\\test_eval_runner.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Competition scoring harness for KIS, QA, TRAKE and benchmark validation",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\evaluation\\scoring.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\evaluation\\runner.py"
+      ],
+      "test_references": [
+        "tests\\test_eval_scoring.py",
+        "tests\\test_phase4_media.py"
+      ],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Competition scoring harness for KIS, QA, TRAKE and benchmark validation",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\jobs\\__init__.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Job execution, manifest processing, and checkpoint runner",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\jobs\\artifact.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\evaluation\\review.py",
+        "src\\aic2026\\evaluation\\runner.py",
+        "src\\aic2026\\asr\\whisper_runner.py",
+        "src\\aic2026\\jobs\\runner.py"
+      ],
+      "test_references": [],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Job execution, manifest processing, and checkpoint runner",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\jobs\\checkpoint.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\jobs\\runner.py"
+      ],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Job execution, manifest processing, and checkpoint runner",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\jobs\\handlers.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\jobs\\runner.py"
+      ],
+      "test_references": [],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Job execution, manifest processing, and checkpoint runner",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\jobs\\manifest.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\jobs\\runner.py"
+      ],
+      "test_references": [
+        "tests\\test_manifest.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Job execution, manifest processing, and checkpoint runner",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\jobs\\models.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\jobs\\handlers.py",
+        "src\\aic2026\\jobs\\manifest.py"
+      ],
+      "test_references": [
+        "tests\\test_manifest.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Job execution, manifest processing, and checkpoint runner",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\jobs\\runner.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TOOLING",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "LOW",
+      "reason": "Job execution, manifest processing, and checkpoint runner",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\media\\__init__.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Exact physical frame resolution, mapper, and video streaming resolver",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\media\\api_handler.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_phase4_media.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\search\\api.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Exact physical frame resolution, mapper, and video streaming resolver",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\media\\mapper.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\media\\resolver.py"
+      ],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Exact physical frame resolution, mapper, and video streaming resolver",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\media\\resolver.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\evaluation\\apply_verification.py",
+        "src\\aic2026\\media\\api_handler.py",
+        "src\\aic2026\\media\\__init__.py"
+      ],
+      "test_references": [
+        "tests\\test_phase4_media.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\search\\api.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Exact physical frame resolution, mapper, and video streaming resolver",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\__init__.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\capabilities.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\evaluation\\prepare_review.py",
+        "src\\aic2026\\evaluation\\annotation_assist.py"
+      ],
+      "test_references": [
+        "tests\\test_retrieval_providers.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\search\\api.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\clip_faiss.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\retrieval\\providers\\visual.py"
+      ],
+      "test_references": [
+        "tests\\test_retrieval_providers.py",
+        "tests\\test_clip_faiss.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\cli.py"
+      ],
+      "doc_references": [
+        "docs\\PROJECT_OVERVIEW.md"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\contract.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\retrieval\\capabilities.py",
+        "src\\aic2026\\retrieval\\providers\\object.py",
+        "src\\aic2026\\retrieval\\orchestrator.py",
+        "src\\aic2026\\retrieval\\windowing.py",
+        "src\\aic2026\\retrieval\\providers\\asr.py",
+        "scripts\\generate_retrieval_contract_types.py"
+      ],
+      "test_references": [
+        "tests\\test_retrieval_contract.py",
+        "tests\\test_retrieval_orchestrator.py",
+        "tests\\test_asr_strategies.py",
+        "tests\\test_phase4_media.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\search\\api.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\contracts\\v1\\fixtures\\request_kis.json",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_retrieval_contract.py"
+      ],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\contracts\\v1\\fixtures\\request_qa.json",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_retrieval_contract.py"
+      ],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\contracts\\v1\\fixtures\\request_trake.json",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_retrieval_contract.py"
+      ],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\contracts\\v1\\fixtures\\response_asr_only.json",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_retrieval_contract.py"
+      ],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\contracts\\v1\\fixtures\\response_fused.json",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_retrieval_contract.py"
+      ],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\contracts\\v1\\fixtures\\response_optional_unavailable.json",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_retrieval_contract.py"
+      ],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\contracts\\v1\\fixtures\\response_visual_only.json",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_retrieval_contract.py"
+      ],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\contracts\\v1\\policy.json",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\retrieval\\contract.py"
+      ],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\contracts\\v1\\retrieval.schema.json",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\retrieval\\contract.py"
+      ],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [
+        "docs\\openapi-retrieval-v1.yaml"
+      ],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\orchestrator.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\evaluation\\prepare_review.py",
+        "src\\aic2026\\evaluation\\annotation_assist.py"
+      ],
+      "test_references": [
+        "tests\\test_retrieval_orchestrator.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\search\\api.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\planner.py",
+      "is_tracked": false,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\retrieval\\orchestrator.py"
+      ],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\providers\\__init__.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\providers\\asr.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\retrieval\\providers\\__init__.py"
+      ],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\providers\\base.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\retrieval\\providers\\__init__.py",
+        "src\\aic2026\\retrieval\\capabilities.py",
+        "src\\aic2026\\retrieval\\providers\\visual.py",
+        "src\\aic2026\\retrieval\\providers\\object.py",
+        "src\\aic2026\\retrieval\\orchestrator.py",
+        "src\\aic2026\\retrieval\\windowing.py",
+        "src\\aic2026\\retrieval\\providers\\asr.py"
+      ],
+      "test_references": [
+        "tests\\test_retrieval_windowing.py",
+        "tests\\test_retrieval_orchestrator.py",
+        "tests\\test_retrieval_providers.py"
+      ],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\providers\\object.py",
+      "is_tracked": false,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\retrieval\\providers\\__init__.py"
+      ],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\providers\\visual.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\retrieval\\providers\\__init__.py"
+      ],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\retrieval\\windowing.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\retrieval\\orchestrator.py"
+      ],
+      "test_references": [
+        "tests\\test_retrieval_windowing.py"
+      ],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Retrieval engine, RRF fusion orchestrator, providers, contract",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\search\\__init__.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "FastAPI search server entry point and index builders",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\search\\api.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_asr_search_api.py"
+      ],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "FastAPI search server entry point and index builders",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\search\\asr.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [
+        "src\\aic2026\\search\\build_asr_index.py",
+        "src\\aic2026\\retrieval\\providers\\asr.py"
+      ],
+      "test_references": [
+        "tests\\test_asr_search_tool.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\search\\api.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "FastAPI search server entry point and index builders",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\search\\build_asr_index.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_asr_search_tool.py"
+      ],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "FastAPI search server entry point and index builders",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "src\\aic2026\\search\\build_object_index.py",
+      "is_tracked": false,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_object_provider.py"
+      ],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "FastAPI search server entry point and index builders",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "src\\aic2026\\workspace.py",
+      "is_tracked": false,
+      "role_status": "CURRENT_PRODUCTION",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [
+        "tests\\test_workspace.py"
+      ],
+      "cli_api_references": [
+        "src\\aic2026\\search\\api.py"
+      ],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "CLI / Workspace entrypoint",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "tests\\test_asr_fts.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_asr_search_api.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_asr_search_tool.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_asr_strategies.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_audit.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_clip_faiss.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_data_registry.py",
+      "is_tracked": false,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "tests\\test_db.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_eval_cli.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_eval_contract.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_eval_importer.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_eval_review.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_eval_runner.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_eval_scoring.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_manifest.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_object_provider.py",
+      "is_tracked": false,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    },
+    {
+      "path": "tests\\test_paths.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_phase4_media.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_retrieval_contract.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_retrieval_orchestrator.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_retrieval_providers.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_retrieval_windowing.py",
+      "is_tracked": true,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "None"
+    },
+    {
+      "path": "tests\\test_workspace.py",
+      "is_tracked": false,
+      "role_status": "CURRENT_TEST",
+      "evidence_level": "VERIFIED",
+      "action_recommendation": "KEEP",
+      "current_references": [],
+      "test_references": [],
+      "cli_api_references": [],
+      "doc_references": [],
+      "authority_relation": "CANONICAL",
+      "duplicate_of": null,
+      "risk_if_removed": "HIGH",
+      "reason": "Living test suite (178 unit tests currently passing 100%)",
+      "precondition_before_action": "Requires M0 Baseline Commit"
+    }
+  ],
+  "unknowns": []
+}

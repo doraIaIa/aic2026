@@ -1,0 +1,507 @@
+{
+  "audit_version": "c0a-preflight-v1",
+  "head": "fa470d38892bc31b87e6b460c3b020534007e490",
+  "branch": "main",
+  "git_state": {
+    "git_tracked_total": 129,
+    "tracked_deleted": 17,
+    "tracked_modified": 9,
+    "tracked_present": 112,
+    "untracked_total": 41,
+    "staged_count": 0
+  },
+  "tracked_deletions": [
+    {
+      "path": "ANTIGRAVITY_BOOTSTRAP_PROMPT.md",
+      "type": "Markdown Instruction",
+      "head_size_bytes": 2017,
+      "last_commit": "47f2d7a chore: bootstrap reliability suite",
+      "head_role": "Phase 0 bootstrap agent prompt",
+      "current_refs": "None (superseded by AGENTS.md and plan/README.md)",
+      "test_cli_refs": "None",
+      "working_tree_depends_on_absence": false,
+      "restoring_impact": "None (dormant instruction)",
+      "intentional_cleanup": true,
+      "removes_unique_lineage": false,
+      "recommendation": "KEEP_DELETED_CANDIDATE",
+      "evidence_level": "VERIFIED"
+    },
+    {
+      "path": "docs/IMPLEMENTATION_SPEC.md",
+      "type": "Markdown Spec",
+      "head_size_bytes": 3011,
+      "last_commit": "002f91e fix(eval): restore TRAKE candidate builder",
+      "head_role": "Corrupted file starting with keyboard mash 'bbvbvbvbvbvbvbvbvvbv'",
+      "current_refs": "None",
+      "test_cli_refs": "None",
+      "working_tree_depends_on_absence": false,
+      "restoring_impact": "Restores corrupted text into docs/",
+      "intentional_cleanup": true,
+      "removes_unique_lineage": false,
+      "recommendation": "KEEP_DELETED_CANDIDATE",
+      "evidence_level": "VERIFIED"
+    },
+    {
+      "path": "docs/TASKS.md",
+      "type": "Markdown Task Queue",
+      "head_size_bytes": 2116,
+      "last_commit": "ec37329 feat(retrieval): add unified retrieval contract v1",
+      "head_role": "Historical task queue from Phase 2/3",
+      "current_refs": "Superseded by plan/05_IMPLEMENTATION_EVALUATION_ROADMAP.md",
+      "test_cli_refs": "None",
+      "working_tree_depends_on_absence": false,
+      "restoring_impact": "Dormant doc",
+      "intentional_cleanup": true,
+      "removes_unique_lineage": false,
+      "recommendation": "KEEP_DELETED_CANDIDATE",
+      "evidence_level": "VERIFIED"
+    },
+    {
+      "path": "notebooks/asr_whisper_medium_worker.ipynb",
+      "type": "Jupyter Notebook",
+      "head_size_bytes": 7585,
+      "last_commit": "0edf02c feat(asr): prepare two-worker split",
+      "head_role": "Early 2-worker prototype notebook draft",
+      "current_refs": "Superseded by colab_asr_whisper_medium_full_corpus_v1.ipynb",
+      "test_cli_refs": "None (test_asr_notebook.py removed)",
+      "working_tree_depends_on_absence": false,
+      "restoring_impact": "Re-introduces obsolete Colab worker draft",
+      "intentional_cleanup": true,
+      "removes_unique_lineage": false,
+      "recommendation": "KEEP_DELETED_CANDIDATE",
+      "evidence_level": "VERIFIED"
+    },
+    {
+      "path": "notebooks/colab_worker.ipynb",
+      "type": "Jupyter Notebook",
+      "head_size_bytes": 1873,
+      "last_commit": "47f2d7a chore: bootstrap reliability suite",
+      "head_role": "Empty 5-cell template placeholder",
+      "current_refs": "None",
+      "test_cli_refs": "None",
+      "working_tree_depends_on_absence": false,
+      "restoring_impact": "Re-introduces empty template",
+      "intentional_cleanup": true,
+      "removes_unique_lineage": false,
+      "recommendation": "KEEP_DELETED_CANDIDATE",
+      "evidence_level": "VERIFIED"
+    },
+    {
+      "path": "notebooks/kaggle_worker.ipynb",
+      "type": "Jupyter Notebook",
+      "head_size_bytes": 1609,
+      "last_commit": "47f2d7a chore: bootstrap reliability suite",
+      "head_role": "Empty 4-cell template placeholder",
+      "current_refs": "None",
+      "test_cli_refs": "None",
+      "working_tree_depends_on_absence": false,
+      "restoring_impact": "Re-introduces empty template",
+      "intentional_cleanup": true,
+      "removes_unique_lineage": false,
+      "recommendation": "KEEP_DELETED_CANDIDATE",
+      "evidence_level": "VERIFIED"
+    },
+    {
+      "path": "tests/test_artifact_corruption.py",
+      "type": "Pytest Unit Test",
+      "head_size_bytes": 867,
+      "last_commit": "47f2d7a chore: bootstrap reliability suite",
+      "head_role": "Tested Phase 0 demo directory corruption",
+      "current_refs": "Covered by test_manifest.py",
+      "test_cli_refs": "None",
+      "working_tree_depends_on_absence": false,
+      "restoring_impact": "Adds 1 trivial test",
+      "intentional_cleanup": true,
+      "removes_unique_lineage": false,
+      "recommendation": "KEEP_DELETED_CANDIDATE",
+      "evidence_level": "VERIFIED"
+    },
+    {
+      "path": "tests/test_asr_cli.py",
+      "type": "Pytest Unit Test",
+      "head_size_bytes": 935,
+      "last_commit": "0edf02c feat(asr): prepare two-worker split",
+      "head_role": "Tested legacy run-asr-shard subparser",
+      "current_refs": "None",
+      "test_cli_refs": "None",
+      "working_tree_depends_on_absence": false,
+      "restoring_impact": "Tests legacy subparser",
+      "intentional_cleanup": true,
+      "removes_unique_lineage": false,
+      "recommendation": "KEEP_DELETED_CANDIDATE",
+      "evidence_level": "VERIFIED"
+    },
+    {
+      "path": "tests/test_asr_manifest.py",
+      "type": "Pytest Unit Test",
+      "head_size_bytes": 3285,
+      "last_commit": "08c55b3 feat(asr): add whisper medium worker",
+      "head_role": "Tested 2-worker manifest shard generation",
+      "current_refs": "None (ASR corpus 100% merged)",
+      "test_cli_refs": "None",
+      "working_tree_depends_on_absence": false,
+      "restoring_impact": "Tests temporary shard splitting",
+      "intentional_cleanup": true,
+      "removes_unique_lineage": false,
+      "recommendation": "KEEP_DELETED_CANDIDATE",
+      "evidence_level": "VERIFIED"
+    },
+    {
+      "path": "tests/test_asr_notebook.py",
+      "type": "Pytest Unit Test",
+      "head_size_bytes": 841,
+      "last_commit": "0edf02c feat(asr): prepare two-worker split",
+      "head_role": "Asserted existence of old asr_whisper_medium_worker.ipynb",
+      "current_refs": "None",
+      "test_cli_refs": "None",
+      "working_tree_depends_on_absence": true,
+      "restoring_impact": "Would FAIL unless old notebook is restored",
+      "intentional_cleanup": true,
+      "removes_unique_lineage": false,
+      "recommendation": "KEEP_DELETED_CANDIDATE",
+      "evidence_level": "VERIFIED"
+    },
+    {
+      "path": "tests/test_asr_review.py",
+      "type": "Pytest Unit Test",
+      "head_size_bytes": 2025,
+      "last_commit": "0edf02c feat(asr): prepare two-worker split",
+      "head_role": "Tested shard batch review generation",
+      "current_refs": "None (ASR review 100% completed)",
+      "test_cli_refs": "None",
+      "working_tree_depends_on_absence": false,
+      "restoring_impact": "Trivial test for old review script",
+      "intentional_cleanup": true,
+      "removes_unique_lineage": false,
+      "recommendation": "KEEP_DELETED_CANDIDATE",
+      "evidence_level": "VERIFIED"
+    },
+    {
+      "path": "tests/test_asr_runner.py",
+      "type": "Pytest Unit Test",
+      "head_size_bytes": 7682,
+      "last_commit": "0edf02c feat(asr): prepare two-worker split",
+      "head_role": "Tested mock whisper runner for local shards",
+      "current_refs": "Covered by test_asr_search_api.py",
+      "test_cli_refs": "None",
+      "working_tree_depends_on_absence": false,
+      "restoring_impact": "Tests local mock whisper execution",
+      "intentional_cleanup": true,
+      "removes_unique_lineage": false,
+      "recommendation": "KEEP_DELETED_CANDIDATE",
+      "evidence_level": "VERIFIED"
+    },
+    {
+      "path": "tests/test_m0_validation.py",
+      "type": "Pytest Unit Test",
+      "head_size_bytes": 653,
+      "last_commit": "3d7267a feat: complete M1 CLIP FAISS index builder",
+      "head_role": "Tested Phase 0 mock mapping file existence",
+      "current_refs": "Replaced by test_data_registry.py and test_phase4_media.py",
+      "test_cli_refs": "None",
+      "working_tree_depends_on_absence": false,
+      "restoring_impact": "Redundant check",
+      "intentional_cleanup": true,
+      "removes_unique_lineage": false,
+      "recommendation": "KEEP_DELETED_CANDIDATE",
+      "evidence_level": "VERIFIED"
+    },
+    {
+      "path": "tests/test_phase5a_evaluation.py",
+      "type": "Pytest Unit Test",
+      "head_size_bytes": 3086,
+      "last_commit": "2963b01 fix(eval): separate video review files",
+      "head_role": "Tested Phase 5A pilot evaluation runner",
+      "current_refs": "Replaced by test_eval_scoring.py and test_eval_contract.py",
+      "test_cli_refs": "None",
+      "working_tree_depends_on_absence": false,
+      "restoring_impact": "Ties to old pilot files",
+      "intentional_cleanup": true,
+      "removes_unique_lineage": false,
+      "recommendation": "KEEP_DELETED_CANDIDATE",
+      "evidence_level": "VERIFIED"
+    },
+    {
+      "path": "tests/test_phase5a_pilot.py",
+      "type": "Pytest Unit Test",
+      "head_size_bytes": 2192,
+      "last_commit": "3dab2a3 fix(eval): restore verification and ground truth",
+      "head_role": "Tested Phase 5A pilot media creation",
+      "current_refs": "Replaced by test_eval_runner.py",
+      "test_cli_refs": "None",
+      "working_tree_depends_on_absence": false,
+      "restoring_impact": "Ties to old pilot files",
+      "intentional_cleanup": true,
+      "removes_unique_lineage": false,
+      "recommendation": "KEEP_DELETED_CANDIDATE",
+      "evidence_level": "VERIFIED"
+    },
+    {
+      "path": "tests/test_phase5a_video_recall.py",
+      "type": "Pytest Unit Test",
+      "head_size_bytes": 5778,
+      "last_commit": "002f91e fix(eval): restore TRAKE candidate builder",
+      "head_role": "Tested video-level recall baseline on 15 queries (conceptually superseded)",
+      "current_refs": "Replaced by frame-level retrieval tests in test_retrieval_orchestrator.py",
+      "test_cli_refs": "None",
+      "working_tree_depends_on_absence": false,
+      "restoring_impact": "Enforces deprecated video-level search paradigm",
+      "intentional_cleanup": true,
+      "removes_unique_lineage": false,
+      "recommendation": "KEEP_DELETED_CANDIDATE",
+      "evidence_level": "VERIFIED"
+    },
+    {
+      "path": "tests/test_resume.py",
+      "type": "Pytest Unit Test",
+      "head_size_bytes": 2203,
+      "last_commit": "47f2d7a chore: bootstrap reliability suite",
+      "head_role": "Tested resuming slow_echo jobs across shards in Phase 0",
+      "current_refs": "Covered by test_manifest.py",
+      "test_cli_refs": "None",
+      "working_tree_depends_on_absence": false,
+      "restoring_impact": "Trivial test",
+      "intentional_cleanup": true,
+      "removes_unique_lineage": false,
+      "recommendation": "KEEP_DELETED_CANDIDATE",
+      "evidence_level": "VERIFIED"
+    }
+  ],
+  "critical_untracked": [
+    "src/aic2026/core/data_registry.py",
+    "src/aic2026/workspace.py",
+    "src/aic2026/retrieval/providers/object.py",
+    "src/aic2026/retrieval/planner.py",
+    "src/aic2026/search/build_object_index.py",
+    "src/aic2026/evaluation/annotation_assist.py",
+    "src/aic2026/evaluation/dataset.py",
+    "src/aic2026/evaluation/labels.py",
+    "src/aic2026/evaluation/prepare_review.py",
+    "tests/test_data_registry.py",
+    "tests/test_object_provider.py",
+    "tests/test_workspace.py",
+    "manifests/demo.jsonl",
+    "manifests/shards/demo/shard-000.json",
+    "manifests/shards/demo/shard-001.json",
+    "manifests/shards/demo/shard-002.json",
+    "docs/DATA_PATHS.md",
+    "docs/AIC2026_RECOVERED_MASTER_PLAN.md",
+    "notebooks/colab_asr_whisper_medium_full_corpus_v1.ipynb",
+    "notebooks/kaggle_asr_whisper_medium_worker.ipynb",
+    "plan/README.md",
+    "plan/00_MASTER_ARCHITECTURE.md",
+    "plan/01_DATA_HUB_MAPPING.md",
+    "plan/02_QUERY_BRAIN_SEARCH_MODES.md",
+    "plan/03_SEARCH_LANES_TECH_STACK.md",
+    "plan/04_TEMPORAL_MEDIA_INSPECTOR.md",
+    "plan/05_IMPLEMENTATION_EVALUATION_ROADMAP.md",
+    "plan/deep-research-report.md"
+  ],
+  "commit_groups": {
+    "G1_GIT_HYGIENE": [
+      ".gitignore"
+    ],
+    "G2_BASELINE_SOURCE_AND_TESTS": [
+      "src/aic2026/core/data_registry.py",
+      "src/aic2026/workspace.py",
+      "src/aic2026/retrieval/providers/object.py",
+      "src/aic2026/retrieval/planner.py",
+      "src/aic2026/search/build_object_index.py",
+      "src/aic2026/evaluation/annotation_assist.py",
+      "src/aic2026/evaluation/dataset.py",
+      "src/aic2026/evaluation/labels.py",
+      "src/aic2026/evaluation/prepare_review.py",
+      "src/aic2026/evaluation/prepare_video_review.py",
+      "src/aic2026/retrieval/capabilities.py",
+      "src/aic2026/retrieval/orchestrator.py",
+      "src/aic2026/retrieval/providers/__init__.py",
+      "src/aic2026/retrieval/providers/visual.py",
+      "src/aic2026/search/api.py",
+      "tests/test_data_registry.py",
+      "tests/test_object_provider.py",
+      "tests/test_workspace.py",
+      "tests/test_asr_search_api.py",
+      "tests/test_retrieval_orchestrator.py",
+      "manifests/demo.jsonl",
+      "manifests/shards/demo/shard-000.json",
+      "manifests/shards/demo/shard-001.json",
+      "manifests/shards/demo/shard-002.json"
+    ],
+    "G3_CONTRACT_AND_PORTABLE_REGISTRY": [
+      "docs/DATA_PATHS.md",
+      "docs/DATA_CONTRACT_LOCK.md",
+      "docs/openapi-retrieval-v1.yaml",
+      "docs/AIC2026_RECOVERED_MASTER_PLAN.md",
+      "notebooks/colab_asr_whisper_medium_full_corpus_v1.ipynb",
+      "notebooks/kaggle_asr_whisper_medium_worker.ipynb"
+    ],
+    "G4_RETRIEVAL_V2_DESIGN_AUTHORITY": [
+      "plan/README.md",
+      "plan/00_MASTER_ARCHITECTURE.md",
+      "plan/01_DATA_HUB_MAPPING.md",
+      "plan/02_QUERY_BRAIN_SEARCH_MODES.md",
+      "plan/03_SEARCH_LANES_TECH_STACK.md",
+      "plan/04_TEMPORAL_MEDIA_INSPECTOR.md",
+      "plan/05_IMPLEMENTATION_EVALUATION_ROADMAP.md",
+      "plan/deep-research-report.md",
+      "AGENTS.md"
+    ],
+    "G5_AUDIT_LINEAGE_OPTIONAL": [
+      "docs/AUDIT_VIDEO_PROGRAM_CLASSIFICATION_AND_OVERLAP.md",
+      "docs/BTC_PROVIDED_DATA_AUDIT_REPORT.md",
+      "docs/AUDIT_OCR_FRIEND_DATASET.md",
+      "docs/AUDIT_OCR_SINGLE_TEXT_RETRIEVAL.md",
+      "docs/AIC2026_HIERARCHICAL_RETRIEVAL_AUDIT_TAXONOMY_V1.md",
+      "docs/PROJECT_OVERVIEW.md",
+      "docs/repo_audit/REPO_ARCHAEOLOGY_AUDIT.md",
+      "docs/repo_audit/REPO_FILE_CLASSIFICATION.json",
+      "docs/repo_audit/REPO_CLEANUP_PLAN.md",
+      "docs/repo_audit/REPO_SUPERSEDED_MAP.md",
+      "docs/repo_audit/REPO_AUDIT_VERIFICATION.md",
+      "docs/repo_audit/REPO_FILE_CLASSIFICATION_CORRECTED.json",
+      "docs/repo_audit/REPO_CLEANUP_PLAN_CORRECTED.md",
+      "docs/repo_audit/C0A_BASELINE_FREEZE_PREFLIGHT.md",
+      "docs/repo_audit/C0A_COMMIT_ALLOWLIST.json"
+    ],
+    "G6_INTENTIONAL_DELETIONS_PENDING_APPROVAL": [
+      "ANTIGRAVITY_BOOTSTRAP_PROMPT.md",
+      "docs/IMPLEMENTATION_SPEC.md",
+      "docs/TASKS.md",
+      "notebooks/asr_whisper_medium_worker.ipynb",
+      "notebooks/colab_worker.ipynb",
+      "notebooks/kaggle_worker.ipynb",
+      "tests/test_artifact_corruption.py",
+      "tests/test_asr_cli.py",
+      "tests/test_asr_manifest.py",
+      "tests/test_asr_notebook.py",
+      "tests/test_asr_review.py",
+      "tests/test_asr_runner.py",
+      "tests/test_m0_validation.py",
+      "tests/test_phase5a_evaluation.py",
+      "tests/test_phase5a_pilot.py",
+      "tests/test_phase5a_video_recall.py",
+      "tests/test_resume.py"
+    ]
+  },
+  "excluded": [
+    {
+      "path": "configs/local.toml",
+      "reason": "Machine-local configuration file; already matched by .gitignore:53."
+    },
+    {
+      "path": "configs/data_paths.json",
+      "reason": "Contains machine-specific Windows absolute paths (G:\\..., F:\\...). Must be split into configs/data_paths.example.json before committing."
+    },
+    {
+      "path": "AIC2026_RECOVERED_MASTER_PLAN.md",
+      "reason": "Exact duplicate of docs/AIC2026_RECOVERED_MASTER_PLAN.md (Root copy)."
+    },
+    {
+      "path": "docs/deep-research-report.md",
+      "reason": "Exact duplicate of plan/deep-research-report.md (Docs copy)."
+    },
+    {
+      "path": "PROMPT_REPO_ARCHAEOLOGY_AUDIT.md",
+      "reason": "Temporary prompt instruction document."
+    },
+    {
+      "path": "src/aic2026.egg-info/*",
+      "reason": "Editable installation build output."
+    }
+  ],
+  "duplicate_pairs": [
+    {
+      "sha256": "5d2c5e7428ce6ecdfd5b271d46b7ff6c7b98a0cbeae41ec2bf5fffcce7677d24",
+      "size_bytes": 13390,
+      "canonical_path": "docs/AIC2026_RECOVERED_MASTER_PLAN.md",
+      "duplicate_copy": "AIC2026_RECOVERED_MASTER_PLAN.md",
+      "resolution": "DELETE_LATER_CANDIDATE for root copy; commit only docs/ copy."
+    },
+    {
+      "sha256": "5e88ec3265d8c1ee1fa6a47eb9ea2a233b8a1c97a9cf608c02741527877c482c",
+      "size_bytes": 29434,
+      "canonical_path": "plan/deep-research-report.md",
+      "duplicate_copy": "docs/deep-research-report.md",
+      "resolution": "DELETE_LATER_CANDIDATE for docs/ copy; commit only plan/ copy."
+    }
+  ],
+  "portability_checks": {
+    "configs/local.toml": "IGNORED (git check-ignore verified)",
+    "configs/data_paths.json": "MACHINE_LOCAL_CONFIG (SAFE_TO_COMMIT_AS_CANONICAL = NO due to G:\\ and F:\\ paths)"
+  },
+  "milestone_label_map": [
+    {
+      "document": "plan/05_IMPLEMENTATION_EVALUATION_ROADMAP.md",
+      "status": "EXECUTION_AUTHORITY",
+      "milestone_mapping": {
+        "M0": "Contract, Data Registry & Baseline Git Freeze",
+        "M1": "Data Hub & Unified Mapping (01_DATA_HUB_MAPPING.md)",
+        "M2": "4 Independent Retrieval Lanes (03_SEARCH_LANES_TECH_STACK.md)",
+        "M3": "Compare & Benchmark Harness",
+        "M4": "Temporal Sequence Engine (04_TEMPORAL_MEDIA_INSPECTOR.md)",
+        "M5": "Safe Pruning & Query Brain (02_QUERY_BRAIN_SEARCH_MODES.md)",
+        "M6": "Production UI & Hardening"
+      }
+    },
+    {
+      "document": "AGENTS.md",
+      "status": "GUARDRAIL_ORDER",
+      "milestone_mapping": "Dependency order guardrail: Contract -> Data Hub -> Lanes -> Compare -> Sequence -> Prune -> Brain"
+    },
+    {
+      "document": "plan/README.md",
+      "status": "SUMMARY_ROADMAP",
+      "milestone_mapping": "High-level overview matching plan/05_IMPLEMENTATION_EVALUATION_ROADMAP.md"
+    }
+  ],
+  "mandatory_path_constraints": [
+    {
+      "mandatory_path": "AGENTS.md",
+      "exists": true,
+      "tracked": true,
+      "current_authority": true,
+      "safe_to_move": false
+    },
+    {
+      "mandatory_path": "docs/PROJECT_STATE.md",
+      "exists": true,
+      "tracked": true,
+      "current_authority": false,
+      "safe_to_move": false,
+      "note": "Mandated by AGENTS.md Section 1 & Rule 22. Must update AGENTS.md before moving."
+    },
+    {
+      "mandatory_path": "docs/DATA_CONTRACT_LOCK.md",
+      "exists": true,
+      "tracked": true,
+      "current_authority": true,
+      "safe_to_move": false
+    },
+    {
+      "mandatory_path": "plan/README.md",
+      "exists": true,
+      "tracked": false,
+      "current_authority": true,
+      "safe_to_move": false
+    },
+    {
+      "mandatory_path": "plan/00_MASTER_ARCHITECTURE.md",
+      "exists": true,
+      "tracked": false,
+      "current_authority": true,
+      "safe_to_move": false
+    }
+  ],
+  "tests": {
+    "working_tree_pass_count": 178,
+    "working_tree_fail_count": 0,
+    "head_test_count": 211,
+    "test_suite_status": "178 passed in 6.12s"
+  },
+  "c0_execution_ready": true,
+  "blockers": [],
+  "user_decisions_required": [
+    "Confirm approval of 17 intentional tracked deletions in Group G6.",
+    "Approve splitting configs/data_paths.json into configs/data_paths.example.json (portable template for git) and configs/data_paths.json (local ignored)."
+  ]
+}
