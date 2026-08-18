@@ -101,11 +101,12 @@ def test_custom_uid_and_image_relpath_normalization():
     assert c_records[0].timestamp_ms == 500
     assert c_records[0].qwen_status == "OK"
 
-    # Frame 45 and Frame 60 should be MISSING
-    assert c_records[1].qwen_status == "MISSING"
+    # Frame 45 has empty semantics but is present in raw shard -> OK
+    assert c_records[1].qwen_status == "OK"
+    # Frame 60 was omitted from qwen_items -> MISSING
     assert c_records[3].qwen_status == "MISSING"
-    assert len(q_records) == 2
-    assert len(m_records) == 2
+    assert len(q_records) == 3
+    assert len(m_records) == 1
 
 
 def test_validator_passes_on_valid_data():
@@ -123,8 +124,8 @@ def test_validator_passes_on_valid_data():
     assert res.is_valid is True
     assert res.errors == []
     assert res.custom_keyframe_count == 4
-    assert res.qwen_valid_count == 2
-    assert res.qwen_missing_count == 2
+    assert res.qwen_valid_count == 3
+    assert res.qwen_missing_count == 1
 
 
 def test_validator_rejects_unknown_video_id():
@@ -221,8 +222,8 @@ def test_materialization_and_read_api(tmp_path: Path):
     # Load registry
     registry = CustomKeyframeRegistry.load_from_directory(out_dir, video_registry=vreg)
     assert registry.keyframe_count() == 4
-    assert registry.qwen_count() == 2
-    assert registry.qwen_missing_count() == 2
+    assert registry.qwen_count() == 3
+    assert registry.qwen_missing_count() == 1
 
     # Query keyframe
     kf = registry.get_custom_keyframe("CUSTOM:L21_V001:F15")
@@ -235,9 +236,15 @@ def test_materialization_and_read_api(tmp_path: Path):
     assert q is not None
     assert "red car" in q.caption
 
-    # Check missing status
-    assert registry.qwen_status("CUSTOM:L21_V001:F45") == "MISSING"
-    assert registry.get_qwen("CUSTOM:L21_V001:F45") is None
+    # Check frame 45 (present in raw shard with empty semantics -> OK)
+    assert registry.qwen_status("CUSTOM:L21_V001:F45") == "OK"
+    q45 = registry.get_qwen("CUSTOM:L21_V001:F45")
+    assert q45 is not None
+    assert q45.caption == ""
+
+    # Check frame 60 (omitted from raw shard -> MISSING)
+    assert registry.qwen_status("CUSTOM:L22_V001:F60") == "MISSING"
+    assert registry.get_qwen("CUSTOM:L22_V001:F60") is None
 
 
 def test_cli_custom_qwen_catalog(tmp_path: Path):
@@ -341,20 +348,38 @@ def test_validator_rejects_absolute_paths_and_traversal():
     assert any("PATH_TRAVERSAL_FORBIDDEN" in err for err in res_trav.errors)
 
 
-def test_empty_semantic_arrays_are_valid_if_caption_exists():
-    """An observation with empty objects/scenes but a valid caption is still OK, not missing."""
+def test_empty_semantic_arrays_are_valid_ok():
+    """A valid completed observation with all semantic fields empty is still classified as OK."""
     vreg = _create_mock_video_registry()
     custom_items = [
         {"video_id": "L21_V001", "frame_idx": 15, "pts_time": 0.5, "keyframe_id": 1, "file_name": "000001.jpg", "image_path": "output/keyframes/L21_V001/000001.jpg"}
     ]
     qwen_items = [
-        {"video_id": "L21_V001", "frame_idx": 15, "pts_time": 0.5, "objects": [], "scene": [], "visible_actions": [], "caption": "A simple background texture."}
+        {"video_id": "L21_V001", "frame_idx": 15, "pts_time": 0.5, "objects": [], "attributes": [], "spatial_relations": [], "counts": [], "scene": [], "visible_actions": [], "caption": ""}
     ]
     c_rec, q_rec, m_rec = build_custom_and_qwen_records(custom_items, qwen_items, vreg)
     assert len(c_rec) == 1
     assert c_rec[0].qwen_status == "OK"
     assert len(q_rec) == 1
     assert len(m_rec) == 0
+
+
+def test_complete_1_to_1_coverage_zero_missing():
+    """When all custom keyframes have corresponding Qwen entries in the shard, missing count is 0."""
+    vreg = _create_mock_video_registry()
+    custom_items = [
+        {"video_id": "L21_V001", "frame_idx": 15, "pts_time": 0.5, "keyframe_id": 1, "file_name": "000001.jpg", "image_path": "output/keyframes/L21_V001/000001.jpg"},
+        {"video_id": "L21_V002", "frame_idx": 30, "pts_time": 1.0, "keyframe_id": 1, "file_name": "000001.jpg", "image_path": "output/keyframes/L21_V002/000001.jpg"},
+    ]
+    qwen_items = [
+        {"video_id": "L21_V001", "frame_idx": 15, "pts_time": 0.5, "caption": "first"},
+        {"video_id": "L21_V002", "frame_idx": 30, "pts_time": 1.0, "caption": "second"},
+    ]
+    c_rec, q_rec, m_rec = build_custom_and_qwen_records(custom_items, qwen_items, vreg)
+    assert len(c_rec) == 2
+    assert len(q_rec) == 2
+    assert len(m_rec) == 0
+    assert all(r.qwen_status == "OK" for r in c_rec)
 
 
 def test_accounting_valid_plus_missing_equals_total(tmp_path: Path):

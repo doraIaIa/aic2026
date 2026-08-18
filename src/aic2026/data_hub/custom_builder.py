@@ -85,42 +85,39 @@ def build_custom_and_qwen_records(
 
         is_qwen_valid = False
         if qwen_raw is not None:
-            caption = qwen_raw.get("caption", "").strip() if isinstance(qwen_raw.get("caption"), str) else ""
+            is_qwen_valid = True
+            caption = str(qwen_raw.get("caption", "") or "").strip()
             objects = qwen_raw.get("objects", [])
             scene = qwen_raw.get("scene", [])
             qwen_pts = float(qwen_raw.get("pts_time", raw_pts))
             qwen_ts_ms = int(round(qwen_pts * 1000))
-            # If at least caption or objects or scene exists, it's valid semantics
-            if caption or objects or scene:
-                is_qwen_valid = True
-                q_rec = QwenSemanticRecord(
-                    keyframe_uid=uid,
-                    video_id=v_id,
-                    frame_idx=f_idx,
-                    timestamp_ms=qwen_ts_ms,
-                    raw_pts_time=qwen_pts,
-                    objects=[str(x) for x in objects] if isinstance(objects, list) else [],
-                    attributes=[str(x) for x in qwen_raw.get("attributes", [])] if isinstance(qwen_raw.get("attributes"), list) else [],
-                    spatial_relations=[str(x) for x in qwen_raw.get("spatial_relations", [])] if isinstance(qwen_raw.get("spatial_relations"), list) else [],
-                    counts=[str(x) for x in qwen_raw.get("counts", [])] if isinstance(qwen_raw.get("counts"), list) else [],
-                    scene=[str(x) for x in scene] if isinstance(scene, list) else [],
-                    visible_actions=[str(x) for x in qwen_raw.get("visible_actions", [])] if isinstance(qwen_raw.get("visible_actions"), list) else [],
-                    caption=caption,
-                    semantic_status="OK",
-                    frame_space="CUSTOM",
-                    schema_version="v1",
-                    source_id="qwen_raw_v1",
-                )
-                qwen_records.append(q_rec)
-
-        if not is_qwen_valid:
+            q_rec = QwenSemanticRecord(
+                keyframe_uid=uid,
+                video_id=v_id,
+                frame_idx=f_idx,
+                timestamp_ms=qwen_ts_ms,
+                raw_pts_time=qwen_pts,
+                objects=[str(x) for x in objects] if isinstance(objects, list) else [],
+                attributes=[str(x) for x in qwen_raw.get("attributes", [])] if isinstance(qwen_raw.get("attributes"), list) else [],
+                spatial_relations=[str(x) for x in qwen_raw.get("spatial_relations", [])] if isinstance(qwen_raw.get("spatial_relations"), list) else [],
+                counts=[str(x) for x in qwen_raw.get("counts", [])] if isinstance(qwen_raw.get("counts"), list) else [],
+                scene=[str(x) for x in scene] if isinstance(scene, list) else [],
+                visible_actions=[str(x) for x in qwen_raw.get("visible_actions", [])] if isinstance(qwen_raw.get("visible_actions"), list) else [],
+                caption=caption,
+                semantic_status="OK",
+                frame_space="CUSTOM",
+                schema_version="v1",
+                source_id="qwen_raw_v1",
+            )
+            qwen_records.append(q_rec)
+        else:
             m_rec = QwenMissingRecord(
                 keyframe_uid=uid,
                 video_id=v_id,
                 frame_idx=f_idx,
                 timestamp_ms=ts_ms,
                 raw_pts_time=raw_pts,
-                reason="EMPTY_OR_UNPARSED_OUTPUT" if qwen_raw is not None else "NOT_IN_QWEN_SHARD",
+                reason="NOT_IN_QWEN_SHARD",
             )
             missing_records.append(m_rec)
 
