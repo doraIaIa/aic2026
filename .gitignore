@@ -53,7 +53,14 @@ Thumbs.db
 configs/local.toml
 configs/colab.toml
 configs/kaggle.toml
+configs/data_paths.json
 
-manifests/shards/
-manifests/demo.jsonl
+# Local runtime databases
+aic2026_data_hub.db
+local.db
+*.sqlite3-journal
+
+# Build metadata
+src/*.egg-info/
 *.egg-info/
+

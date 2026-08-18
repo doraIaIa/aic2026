@@ -1,0 +1,39 @@
+{
+  "version": "1.0",
+  "description": "AIC 2026 Portable Data Paths Template (Copy to configs/data_paths.json for local machine execution)",
+  "roots": {
+    "btc_drive_root": "<PATH_TO_BTC_DRIVE_DATA_ROOT>",
+    "local_artifacts_root": "<PATH_TO_LOCAL_AIC_WORK_ARTIFACTS>",
+    "local_dev_root": "<PATH_TO_LOCAL_AIC_DEV_AIC2026>"
+  },
+  "btc_provided_data": {
+    "keyframes_dir": "<PATH_TO_BTC_DRIVE_DATA_ROOT>/data_extracted/keyframes",
+    "map_keyframes_dir": "<PATH_TO_BTC_DRIVE_DATA_ROOT>/data_extracted/map-keyframes",
+    "clip_features_dir": "<PATH_TO_BTC_DRIVE_DATA_ROOT>/data_extracted/clip-features-32",
+    "objects_dir": "<PATH_TO_BTC_DRIVE_DATA_ROOT>/data_extracted/objects",
+    "video_dir": "<PATH_TO_BTC_DRIVE_DATA_ROOT>/data_extracted/video",
+    "media_info_zip": "<PATH_TO_BTC_DRIVE_DATA_ROOT>/data/media-info-aic25-b1.zip"
+  },
+  "custom_enriched_data": {
+    "keyframes_dir": "<PATH_TO_BTC_DRIVE_DATA_ROOT>/output/keyframes",
+    "map_keyframes_dir": "<PATH_TO_BTC_DRIVE_DATA_ROOT>/output/map_keyframes",
+    "qwen_captions_shard": "<PATH_TO_BTC_DRIVE_DATA_ROOT>/output_llm/shard_000.jsonl",
+    "video_metadata_csv": "<PATH_TO_BTC_DRIVE_DATA_ROOT>/output/video_metadata.csv"
+  },
+  "asr_voice_data": {
+    "master_segments_file": "<PATH_TO_LOCAL_AIC_WORK_ARTIFACTS>/asr/whisper-medium-vi-full-v1-colab-merged/asr_segments.jsonl",
+    "master_videos_file": "<PATH_TO_LOCAL_AIC_WORK_ARTIFACTS>/asr/whisper-medium-vi-full-v1-colab-merged/asr_videos.jsonl",
+    "final_backup_dir": "<PATH_TO_LOCAL_AIC_WORK_ARTIFACTS>/asr/whisper-medium-vi-full-873-final",
+    "total_videos": 873,
+    "total_segments": 107540
+  },
+  "ocr_text_data": {
+    "manifest_v1": "<PATH_TO_LOCAL_AIC_WORK_ARTIFACTS>/ocr/ocr-corpus-v1/manifest.jsonl",
+    "selected_frames_count": 138791,
+    "shards_folder_name": "ocr_single_text_retrieval"
+  },
+  "evaluation_benchmarks": {
+    "internal_verified_dev15_dir": "<PATH_TO_LOCAL_AIC_WORK_ARTIFACTS>/evaluation/internal-verified-v1",
+    "group_a_review_dir": "<PATH_TO_LOCAL_AIC_WORK_ARTIFACTS>/evaluation/group-a-review-v1"
+  }
+}
