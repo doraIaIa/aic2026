@@ -4,6 +4,7 @@
 - **Internal Slice**: `M4A — ASR BM25 + BGE-M3 Core Retrieval Lane`
 - **Date**: 2026-08-19
 - **Repository**: `F:/AIC_DEV/aic2026`
+- **Final Commit**: `e94c1ff0cf9a5b74ffd61fc99edcb88e7f457d4e` (`feat(retrieval): add asr bm25 and bge lanes`)
 - **Target Branch**: `main`
 
 ---
