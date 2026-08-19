@@ -121,6 +121,13 @@ class RuntimeDataHub:
         )
         return [dict(r) for r in c.fetchall()]
 
+    def get_asr_segment(self, segment_uid: str) -> Optional[Dict[str, Any]]:
+        """Get canonical ASR speech segment record by segment_uid."""
+        c = self._conn.cursor()
+        c.execute("SELECT * FROM canonical_asr_segments WHERE segment_uid = ?", (segment_uid,))
+        row = c.fetchone()
+        return dict(row) if row else None
+
     def get_qwen(self, keyframe_uid: str) -> Optional[Dict[str, Any]]:
         """Get Qwen rich multimodal semantic annotation for a CUSTOM keyframe."""
         c = self._conn.cursor()

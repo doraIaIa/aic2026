@@ -1,4 +1,6 @@
 from aic2026.retrieval.providers.asr import AsrProvider
+from aic2026.retrieval.providers.asr_bge import AsrBgeProvider
+from aic2026.retrieval.providers.asr_bm25 import AsrBm25Provider
 from aic2026.retrieval.providers.base import (
     ProviderCapability,
     ProviderHit,
@@ -14,6 +16,8 @@ from aic2026.retrieval.providers.btc_clip import BtcClipProvider
 
 __all__ = [
     "AsrProvider",
+    "AsrBm25Provider",
+    "AsrBgeProvider",
     "ProviderCapability",
     "ProviderHit",
     "ProviderQuery",

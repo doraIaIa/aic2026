@@ -18,6 +18,8 @@ from aic2026.retrieval.capabilities import CapabilityService
 from aic2026.retrieval.contract import RetrievalContractError
 from aic2026.retrieval.orchestrator import SearchOrchestrator
 from aic2026.retrieval.providers import (
+    AsrBgeProvider,
+    AsrBm25Provider,
     AsrProvider,
     BtcClipProvider,
     ObjectProvider,
@@ -44,6 +46,8 @@ class AsrSearchApi:
         media_resolver: MediaResolver | None = None,
         siglip_provider: SigLIPProvider | None = None,
         btc_clip_provider: BtcClipProvider | None = None,
+        asr_bm25_provider: AsrBm25Provider | None = None,
+        asr_bge_provider: AsrBgeProvider | None = None,
     ) -> None:
         self.database = Path(database)
         self.capability_service = capability_service or CapabilityService(
@@ -53,6 +57,8 @@ class AsrSearchApi:
         self.media_resolver = media_resolver
         self.siglip_provider = siglip_provider
         self.btc_clip_provider = btc_clip_provider
+        self.asr_bm25_provider = asr_bm25_provider
+        self.asr_bge_provider = asr_bge_provider
         self.workspace = WorkspaceStore(self.database)
 
     def siglip_health(self) -> tuple[int, dict[str, Any]]:
@@ -142,6 +148,98 @@ class AsrSearchApi:
         return HTTPStatus.OK, {
             "status": "OK",
             "lane": "btc_clip",
+            "query": query_text,
+            "query_id": request.get("query_id"),
+            "top_k": top_k,
+            "count": len(hits),
+            "elapsed_ms": round(elapsed_ms, 2),
+            "hits": [h.to_dict() for h in hits],
+        }
+
+    def asr_bm25_health(self) -> tuple[int, dict[str, Any]]:
+        if self.asr_bm25_provider is None:
+            if self.database.exists():
+                self.asr_bm25_provider = AsrBm25Provider(self.database)
+            else:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {
+                    "lane_id": "asr_bm25",
+                    "status": "UNAVAILABLE",
+                    "error": f"Database not found at {self.database}",
+                }
+        h = self.asr_bm25_provider.health()
+        status_code = HTTPStatus.OK if h.get("status") == "OK" else HTTPStatus.SERVICE_UNAVAILABLE
+        return status_code, h
+
+    def asr_bm25_search(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        if self.asr_bm25_provider is None:
+            if self.database.exists():
+                self.asr_bm25_provider = AsrBm25Provider(self.database)
+            else:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {
+                    "status": "ERROR",
+                    "error": f"Database not found at {self.database}",
+                }
+        query_text = request.get("query") or request.get("query_text") or ""
+        if not isinstance(query_text, str) or not query_text.strip():
+            return HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": "query is required"}
+        top_k = int(request.get("top_k", 20))
+        video_ids = tuple(request.get("candidate_video_ids") or request.get("video_ids") or ())
+
+        query = ProviderQuery(query_text=query_text, top_k=top_k, video_ids=video_ids)
+        t0 = time.perf_counter()
+        hits = self.asr_bm25_provider.search(query)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        return HTTPStatus.OK, {
+            "status": "OK",
+            "lane": "asr_bm25",
+            "query": query_text,
+            "query_id": request.get("query_id"),
+            "top_k": top_k,
+            "count": len(hits),
+            "elapsed_ms": round(elapsed_ms, 2),
+            "hits": [h.to_dict() for h in hits],
+        }
+
+    def asr_bge_health(self) -> tuple[int, dict[str, Any]]:
+        if self.asr_bge_provider is None:
+            default_artifact_dir = Path(r"F:\AIC_WORK\artifacts\retrieval_v2\asr_bge_v1")
+            if default_artifact_dir.exists():
+                self.asr_bge_provider = AsrBgeProvider(default_artifact_dir)
+            else:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {
+                    "lane_id": "asr_bge",
+                    "status": "UNAVAILABLE",
+                    "error": "ASR BGE artifact directory not found",
+                }
+        h = self.asr_bge_provider.health()
+        status_code = HTTPStatus.OK if h.get("status") == "OK" else HTTPStatus.SERVICE_UNAVAILABLE
+        return status_code, h
+
+    def asr_bge_search(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        if self.asr_bge_provider is None:
+            default_artifact_dir = Path(r"F:\AIC_WORK\artifacts\retrieval_v2\asr_bge_v1")
+            if default_artifact_dir.exists():
+                self.asr_bge_provider = AsrBgeProvider(default_artifact_dir)
+            else:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {
+                    "status": "ERROR",
+                    "error": "ASR BGE artifact directory not found",
+                }
+        query_text = request.get("query") or request.get("query_text") or ""
+        if not isinstance(query_text, str) or not query_text.strip():
+            return HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": "query is required"}
+        top_k = int(request.get("top_k", 20))
+        video_ids = tuple(request.get("candidate_video_ids") or request.get("video_ids") or ())
+
+        query = ProviderQuery(query_text=query_text, top_k=top_k, video_ids=video_ids)
+        t0 = time.perf_counter()
+        hits = self.asr_bge_provider.search(query)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        return HTTPStatus.OK, {
+            "status": "OK",
+            "lane": "asr_bge",
             "query": query_text,
             "query_id": request.get("query_id"),
             "top_k": top_k,
@@ -259,6 +357,10 @@ def make_handler(
                     status, payload = application.siglip_health()
                 elif parsed.path in {"/api/v1/lanes/btc-clip/health", "/api/v1/lanes/btc_clip/health"}:
                     status, payload = application.btc_clip_health()
+                elif parsed.path in {"/api/v1/lanes/asr-bm25/health", "/api/v1/lanes/asr_bm25/health"}:
+                    status, payload = application.asr_bm25_health()
+                elif parsed.path in {"/api/v1/lanes/asr-bge/health", "/api/v1/lanes/asr_bge/health"}:
+                    status, payload = application.asr_bge_health()
                 elif parsed.path == "/api/asr/search":
                     status, payload = application.search(parse_qs(parsed.query, keep_blank_values=True))
                 else:
@@ -279,6 +381,10 @@ def make_handler(
                 "/api/v1/lanes/siglip_custom/search",
                 "/api/v1/lanes/btc-clip/search",
                 "/api/v1/lanes/btc_clip/search",
+                "/api/v1/lanes/asr-bm25/search",
+                "/api/v1/lanes/asr_bm25/search",
+                "/api/v1/lanes/asr-bge/search",
+                "/api/v1/lanes/asr_bge/search",
             }
             if (
                 parsed.path not in valid_post_paths
@@ -297,6 +403,10 @@ def make_handler(
                     status, payload = application.siglip_search(request)
                 elif parsed.path in {"/api/v1/lanes/btc-clip/search", "/api/v1/lanes/btc_clip/search"}:
                     status, payload = application.btc_clip_search(request)
+                elif parsed.path in {"/api/v1/lanes/asr-bm25/search", "/api/v1/lanes/asr_bm25/search"}:
+                    status, payload = application.asr_bm25_search(request)
+                elif parsed.path in {"/api/v1/lanes/asr-bge/search", "/api/v1/lanes/asr_bge/search"}:
+                    status, payload = application.asr_bge_search(request)
                 else:
                     entry_id = parsed.path.rsplit("/", 1)[-1] if parsed.path != "/api/v1/workspace" else None
                     status, payload = HTTPStatus.OK, application.workspace.save(request, entry_id=entry_id)
