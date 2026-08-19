@@ -10,6 +10,7 @@ from aic2026.retrieval.providers.base import (
 from aic2026.retrieval.providers.visual import VisualProvider
 from aic2026.retrieval.providers.object import ObjectProvider
 from aic2026.retrieval.providers.siglip import SigLIPProvider
+from aic2026.retrieval.providers.btc_clip import BtcClipProvider
 
 __all__ = [
     "AsrProvider",
@@ -22,4 +23,5 @@ __all__ = [
     "VisualProvider",
     "ObjectProvider",
     "SigLIPProvider",
+    "BtcClipProvider",
 ]

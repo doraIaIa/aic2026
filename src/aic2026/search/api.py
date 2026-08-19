@@ -17,7 +17,13 @@ from aic2026.media.resolver import MediaResolver
 from aic2026.retrieval.capabilities import CapabilityService
 from aic2026.retrieval.contract import RetrievalContractError
 from aic2026.retrieval.orchestrator import SearchOrchestrator
-from aic2026.retrieval.providers import AsrProvider, ObjectProvider, SigLIPProvider, VisualProvider
+from aic2026.retrieval.providers import (
+    AsrProvider,
+    BtcClipProvider,
+    ObjectProvider,
+    SigLIPProvider,
+    VisualProvider,
+)
 from aic2026.retrieval.providers.base import ProviderQuery
 from aic2026.search.asr import AsrSearchError, search_asr
 from aic2026.workspace import WorkspaceError, WorkspaceStore
@@ -37,6 +43,7 @@ class AsrSearchApi:
         orchestrator: SearchOrchestrator | None = None,
         media_resolver: MediaResolver | None = None,
         siglip_provider: SigLIPProvider | None = None,
+        btc_clip_provider: BtcClipProvider | None = None,
     ) -> None:
         self.database = Path(database)
         self.capability_service = capability_service or CapabilityService(
@@ -45,6 +52,7 @@ class AsrSearchApi:
         self.orchestrator = orchestrator or SearchOrchestrator(self.capability_service.providers)
         self.media_resolver = media_resolver
         self.siglip_provider = siglip_provider
+        self.btc_clip_provider = btc_clip_provider
         self.workspace = WorkspaceStore(self.database)
 
     def siglip_health(self) -> tuple[int, dict[str, Any]]:
@@ -87,6 +95,53 @@ class AsrSearchApi:
         return HTTPStatus.OK, {
             "status": "OK",
             "lane": "siglip_custom",
+            "query": query_text,
+            "query_id": request.get("query_id"),
+            "top_k": top_k,
+            "count": len(hits),
+            "elapsed_ms": round(elapsed_ms, 2),
+            "hits": [h.to_dict() for h in hits],
+        }
+
+    def btc_clip_health(self) -> tuple[int, dict[str, Any]]:
+        if self.btc_clip_provider is None:
+            default_artifact_dir = Path(r"F:\AIC_WORK\artifacts\m1\clip-faiss-btc-v1")
+            if default_artifact_dir.exists():
+                self.btc_clip_provider = BtcClipProvider(default_artifact_dir)
+            else:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {
+                    "lane_id": "btc_clip",
+                    "status": "UNAVAILABLE",
+                    "error": "BTC CLIP artifact directory not found",
+                }
+        h = self.btc_clip_provider.health()
+        status_code = HTTPStatus.OK if h.get("status") == "OK" else HTTPStatus.SERVICE_UNAVAILABLE
+        return status_code, h
+
+    def btc_clip_search(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        if self.btc_clip_provider is None:
+            default_artifact_dir = Path(r"F:\AIC_WORK\artifacts\m1\clip-faiss-btc-v1")
+            if default_artifact_dir.exists():
+                self.btc_clip_provider = BtcClipProvider(default_artifact_dir)
+            else:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {
+                    "status": "ERROR",
+                    "error": "BTC CLIP artifact directory not found",
+                }
+        query_text = request.get("query") or request.get("query_text") or ""
+        if not isinstance(query_text, str) or not query_text.strip():
+            return HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": "query is required"}
+        top_k = int(request.get("top_k", 20))
+        video_ids = tuple(request.get("candidate_video_ids") or request.get("video_ids") or ())
+
+        query = ProviderQuery(query_text=query_text, top_k=top_k, video_ids=video_ids)
+        t0 = time.perf_counter()
+        hits = self.btc_clip_provider.search(query)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        return HTTPStatus.OK, {
+            "status": "OK",
+            "lane": "btc_clip",
             "query": query_text,
             "query_id": request.get("query_id"),
             "top_k": top_k,
@@ -200,8 +255,10 @@ def make_handler(
                     status, payload = application.health()
                 elif parsed.path == "/api/v1/capabilities":
                     status, payload = application.capabilities()
-                elif parsed.path == "/api/v1/lanes/siglip/health":
+                elif parsed.path in {"/api/v1/lanes/siglip/health", "/api/v1/lanes/siglip_custom/health"}:
                     status, payload = application.siglip_health()
+                elif parsed.path in {"/api/v1/lanes/btc-clip/health", "/api/v1/lanes/btc_clip/health"}:
+                    status, payload = application.btc_clip_health()
                 elif parsed.path == "/api/asr/search":
                     status, payload = application.search(parse_qs(parsed.query, keep_blank_values=True))
                 else:
@@ -215,8 +272,16 @@ def make_handler(
 
         def do_POST(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
+            valid_post_paths = {
+                "/api/v1/search",
+                "/api/v1/workspace",
+                "/api/v1/lanes/siglip/search",
+                "/api/v1/lanes/siglip_custom/search",
+                "/api/v1/lanes/btc-clip/search",
+                "/api/v1/lanes/btc_clip/search",
+            }
             if (
-                parsed.path not in {"/api/v1/search", "/api/v1/workspace", "/api/v1/lanes/siglip/search"}
+                parsed.path not in valid_post_paths
                 and not parsed.path.startswith("/api/v1/workspace/")
             ):
                 self._write_json(HTTPStatus.NOT_FOUND, {"status": "ERROR", "error": "Endpoint not found"})
@@ -228,8 +293,10 @@ def make_handler(
                 request = json.loads(self.rfile.read(length).decode("utf-8"))
                 if parsed.path == "/api/v1/search":
                     status, payload = application.unified_search(request)
-                elif parsed.path == "/api/v1/lanes/siglip/search":
+                elif parsed.path in {"/api/v1/lanes/siglip/search", "/api/v1/lanes/siglip_custom/search"}:
                     status, payload = application.siglip_search(request)
+                elif parsed.path in {"/api/v1/lanes/btc-clip/search", "/api/v1/lanes/btc_clip/search"}:
+                    status, payload = application.btc_clip_search(request)
                 else:
                     entry_id = parsed.path.rsplit("/", 1)[-1] if parsed.path != "/api/v1/workspace" else None
                     status, payload = HTTPStatus.OK, application.workspace.save(request, entry_id=entry_id)
