@@ -9,6 +9,7 @@ from aic2026.retrieval.providers.base import (
     ProviderUnavailableError,
     measure_provider_search,
 )
+from aic2026.retrieval.providers.media_bm25 import MediaBm25Provider
 from aic2026.retrieval.providers.visual import VisualProvider
 from aic2026.retrieval.providers.object import ObjectProvider
 from aic2026.retrieval.providers.siglip import SigLIPProvider
@@ -21,6 +22,7 @@ __all__ = [
     "AsrProvider",
     "AsrBm25Provider",
     "AsrBgeProvider",
+    "MediaBm25Provider",
     "OcrBm25Provider",
     "OcrTrigramProvider",
     "OcrBgeProvider",
@@ -35,4 +37,5 @@ __all__ = [
     "SigLIPProvider",
     "BtcClipProvider",
 ]
+
 

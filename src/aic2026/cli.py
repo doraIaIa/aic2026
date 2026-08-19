@@ -1458,6 +1458,71 @@ def cmd_ocr_bge_health(args: argparse.Namespace) -> int:
         return 2
 
 
+def cmd_search_media_bm25(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.providers.media_bm25 import MediaBm25Provider
+
+        db_path = Path(args.db) if args.db else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+        provider = MediaBm25Provider(db_path)
+
+        video_ids = ()
+        if args.video_id:
+            video_ids = (args.video_id,)
+        elif args.video_ids_file:
+            with open(args.video_ids_file, "r", encoding="utf-8") as f:
+                video_ids = tuple(line.strip() for line in f if line.strip())
+
+        query = ProviderQuery(query_text=args.query, top_k=args.top_k, video_ids=video_ids)
+        t0 = time.perf_counter()
+        hits = provider.search(
+            query,
+            author_filter=getattr(args, "author", None),
+            publish_date_from=getattr(args, "publish_date_from", None),
+            publish_date_to=getattr(args, "publish_date_to", None),
+        )
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        if args.json:
+            _json_print({
+                "status": "OK",
+                "lane": "media_bm25",
+                "entity_type": "VIDEO",
+                "query": args.query,
+                "top_k": args.top_k,
+                "count": len(hits),
+                "elapsed_ms": round(elapsed_ms, 2),
+                "hits": [h.to_dict() for h in hits],
+            })
+        else:
+            print(f"Media BM25 Search: '{args.query}' (took {elapsed_ms:.1f}ms, {len(hits)} hits)")
+            print(f"{'Rank':<5} {'Score':<8} {'Video ID':<12} {'Author':<22} {'Date':<12} {'Title':<45}")
+            print("-" * 110)
+            for h in hits:
+                author_str = (h.payload.get("author") or "")[:20]
+                date_str = h.payload.get("publish_date") or ""
+                title_str = (h.payload.get("title") or "")[:43]
+                print(f"{h.rank:<5} {h.raw_score:<8.4f} {h.video_id:<12} {author_str:<22} {date_str:<12} {title_str:<45}")
+        return 0
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+def cmd_media_bm25_health(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.providers.media_bm25 import MediaBm25Provider
+
+        db_path = Path(args.db) if args.db else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+        provider = MediaBm25Provider(db_path)
+        h = provider.health()
+        _json_print(h)
+        return 0 if h.get("status") == "OK" else 1
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aic", description="AIC 2026 reliability/control-plane CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1881,7 +1946,25 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--artifact-dir", help="directory chứa ocr_bge.faiss và rowmap")
     p.set_defaults(func=cmd_ocr_bge_health)
 
+    # --- Media-info / Metadata Lanes (M4E) ---
+    p = sub.add_parser("search-media-bm25", help="truy vấn Media-info lexical bằng SQLite FTS5 / BM25 (VIDEO evidence)")
+    p.add_argument("query", help="nội dung text query")
+    p.add_argument("--db", help="đường dẫn mapping.sqlite")
+    p.add_argument("--top-k", type=int, default=20)
+    p.add_argument("--video-id", help="scope tìm kiếm trong 1 video cụ thể")
+    p.add_argument("--video-ids-file", help="scope tìm kiếm trong danh sách video (mỗi dòng 1 video_id)")
+    p.add_argument("--author", help="lọc chính xác theo author/kênh")
+    p.add_argument("--publish-date-from", help="lọc ngày xuất bản từ (dd/mm/yyyy)")
+    p.add_argument("--publish-date-to", help="lọc ngày xuất bản đến (dd/mm/yyyy)")
+    p.add_argument("--json", action="store_true", help="output json format")
+    p.set_defaults(func=cmd_search_media_bm25)
+
+    p = sub.add_parser("media-bm25-health", help="kiểm tra trạng thái FTS5 và canonical media_info của Media BM25 lane")
+    p.add_argument("--db", help="đường dẫn mapping.sqlite")
+    p.set_defaults(func=cmd_media_bm25_health)
+
     return parser
+
 
 
 

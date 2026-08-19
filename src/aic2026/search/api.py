@@ -22,6 +22,7 @@ from aic2026.retrieval.providers import (
     AsrBm25Provider,
     AsrProvider,
     BtcClipProvider,
+    MediaBm25Provider,
     ObjectProvider,
     OcrBgeProvider,
     OcrBm25Provider,
@@ -54,6 +55,7 @@ class AsrSearchApi:
         ocr_bm25_provider: OcrBm25Provider | None = None,
         ocr_trigram_provider: OcrTrigramProvider | None = None,
         ocr_bge_provider: OcrBgeProvider | None = None,
+        media_bm25_provider: MediaBm25Provider | None = None,
     ) -> None:
         self.database = Path(database)
         self.capability_service = capability_service or CapabilityService(
@@ -68,6 +70,7 @@ class AsrSearchApi:
         self.ocr_bm25_provider = ocr_bm25_provider
         self.ocr_trigram_provider = ocr_trigram_provider
         self.ocr_bge_provider = ocr_bge_provider
+        self.media_bm25_provider = media_bm25_provider
         self.workspace = WorkspaceStore(self.database)
 
 
@@ -392,6 +395,61 @@ class AsrSearchApi:
             "hits": [h.to_dict() for h in hits],
         }
 
+    def media_bm25_health(self) -> tuple[int, dict[str, Any]]:
+        if self.media_bm25_provider is None:
+            default_db = self.database if self.database.exists() else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+            if default_db.exists():
+                self.media_bm25_provider = MediaBm25Provider(default_db)
+            else:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {
+                    "lane_id": "media_bm25",
+                    "status": "UNAVAILABLE",
+                    "error": "Media database not found",
+                }
+        h = self.media_bm25_provider.health()
+        status_code = HTTPStatus.OK if h.get("status") == "OK" else HTTPStatus.SERVICE_UNAVAILABLE
+        return status_code, h
+
+    def media_bm25_search(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        if self.media_bm25_provider is None:
+            status_code, _ = self.media_bm25_health()
+            if status_code != HTTPStatus.OK:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {"status": "ERROR", "error": "Media BM25 lane unavailable"}
+        assert self.media_bm25_provider is not None
+
+        query_text = request.get("query") or request.get("q") or ""
+        if not isinstance(query_text, str) or not query_text.strip():
+            return HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": "query is required"}
+        top_k = int(request.get("top_k", 20))
+        video_ids = tuple(request.get("candidate_video_ids") or request.get("video_ids") or ())
+
+        # Optional structured filters
+        author_filter = request.get("author") or None
+        publish_date_from = request.get("publish_date_from") or None
+        publish_date_to = request.get("publish_date_to") or None
+
+        query = ProviderQuery(query_text=query_text, top_k=top_k, video_ids=video_ids)
+        t0 = time.perf_counter()
+        hits = self.media_bm25_provider.search(
+            query,
+            author_filter=author_filter,
+            publish_date_from=publish_date_from,
+            publish_date_to=publish_date_to,
+        )
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        return HTTPStatus.OK, {
+            "status": "OK",
+            "lane": "media_bm25",
+            "entity_type": "VIDEO",
+            "query": query_text,
+            "query_id": request.get("query_id"),
+            "top_k": top_k,
+            "count": len(hits),
+            "elapsed_ms": round(elapsed_ms, 2),
+            "hits": [h.to_dict() for h in hits],
+        }
+
     def health(self) -> tuple[int, dict[str, Any]]:
         if not self.database.is_file():
             return HTTPStatus.SERVICE_UNAVAILABLE, {
@@ -511,6 +569,8 @@ def make_handler(
                     status, payload = application.ocr_trigram_health()
                 elif parsed.path in {"/api/v1/lanes/ocr-bge/health", "/api/v1/lanes/ocr_bge/health"}:
                     status, payload = application.ocr_bge_health()
+                elif parsed.path in {"/api/v1/lanes/media-bm25/health", "/api/v1/lanes/media_bm25/health"}:
+                    status, payload = application.media_bm25_health()
                 elif parsed.path == "/api/asr/search":
                     status, payload = application.search(parse_qs(parsed.query, keep_blank_values=True))
                 else:
@@ -541,6 +601,8 @@ def make_handler(
                 "/api/v1/lanes/ocr_trigram/search",
                 "/api/v1/lanes/ocr-bge/search",
                 "/api/v1/lanes/ocr_bge/search",
+                "/api/v1/lanes/media-bm25/search",
+                "/api/v1/lanes/media_bm25/search",
             }
             if (
                 parsed.path not in valid_post_paths
@@ -569,6 +631,8 @@ def make_handler(
                     status, payload = application.ocr_trigram_search(request)
                 elif parsed.path in {"/api/v1/lanes/ocr-bge/search", "/api/v1/lanes/ocr_bge/search"}:
                     status, payload = application.ocr_bge_search(request)
+                elif parsed.path in {"/api/v1/lanes/media-bm25/search", "/api/v1/lanes/media_bm25/search"}:
+                    status, payload = application.media_bm25_search(request)
                 else:
                     entry_id = parsed.path.rsplit("/", 1)[-1] if parsed.path != "/api/v1/workspace" else None
                     status, payload = HTTPStatus.OK, application.workspace.save(request, entry_id=entry_id)
