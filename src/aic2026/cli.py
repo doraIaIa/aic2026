@@ -722,9 +722,189 @@ def cmd_validate_btc_catalog(args: argparse.Namespace) -> int:
         return 3
 
 
+def cmd_build_data_hub_runtime(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.data_hub.runtime_builder import DataHubRuntimeBuilder
+        from aic2026.data_hub.video_registry import VideoRegistry
+
+        video_registry = VideoRegistry.load_from_directory(Path(args.video_catalog), validate=True)
+        builder = DataHubRuntimeBuilder(video_registry=video_registry)
+        manifest = builder.build(
+            output_root=Path(args.out),
+            canonical_universe_dir=Path(args.video_catalog),
+            canonical_custom_qwen_dir=Path(args.custom_qwen_dir),
+            canonical_asr_ocr_dir=Path(args.asr_ocr_dir),
+            canonical_btc_dir=Path(args.btc_dir),
+        )
+        _json_print(manifest)
+        return 0
+    except Exception as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+
+
+def cmd_validate_data_hub_runtime(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.data_hub.runtime_hub import RuntimeDataHub
+
+        hub = RuntimeDataHub.load_from_directory(Path(args.runtime_dir))
+        conn = hub._conn
+        cursor = conn.cursor()
+
+        cursor.execute("PRAGMA integrity_check;")
+        integrity = cursor.fetchall()[0][0]
+
+        cursor.execute("PRAGMA foreign_key_check;")
+        fk_violations = cursor.fetchall()
+
+        cursor.execute("SELECT COUNT(*) FROM videos")
+        n_videos = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM custom_keyframes")
+        n_custom = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM btc_keyframes")
+        n_btc = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM canonical_asr_segments")
+        n_asr = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM ocr_items")
+        n_ocr = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM video_memberships")
+        n_memberships = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM vector_indexes")
+        n_vector_idx = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM artifacts")
+        n_artifacts = cursor.fetchone()[0]
+
+        is_valid = (
+            integrity == "ok"
+            and len(fk_violations) == 0
+            and n_videos == 873
+            and n_custom == 116767
+            and n_btc == 177321
+            and n_asr == 107540
+            and n_ocr == 676925
+            and n_memberships == 961
+        )
+
+        res = {
+            "is_valid": is_valid,
+            "integrity_check": integrity,
+            "foreign_key_violations": len(fk_violations),
+            "counts": {
+                "videos": n_videos,
+                "custom_keyframes": n_custom,
+                "btc_keyframes": n_btc,
+                "asr_segments": n_asr,
+                "ocr_items": n_ocr,
+                "video_memberships": n_memberships,
+                "vector_indexes": n_vector_idx,
+                "artifacts": n_artifacts,
+            },
+        }
+        _json_print(res)
+        return 0 if is_valid else 3
+    except Exception as exc:
+        _json_print({"is_valid": False, "errors": [str(exc)]})
+        return 3
+
+
+def cmd_data_hub_summary(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.data_hub.runtime_hub import RuntimeDataHub
+
+        hub = RuntimeDataHub.load_from_directory(Path(args.runtime_dir))
+        conn = hub._conn
+        cursor = conn.cursor()
+
+        counts = {}
+        for table in [
+            "videos", "media_info", "custom_keyframes", "qwen_frames",
+            "asr_video_coverage", "canonical_asr_segments", "ocr_keyframes",
+            "ocr_items", "ocr_bge_rowmap", "btc_keyframes", "btc_clip_rows",
+            "btc_object_coverage", "taxonomy_nodes", "video_memberships",
+            "artifacts", "vector_indexes", "asr_fts", "ocr_fts", "qwen_caption_fts", "media_fts"
+        ]:
+            try:
+                cursor.execute(f"SELECT COUNT(*) FROM {table}")
+                counts[table] = cursor.fetchone()[0]
+            except Exception as e:
+                counts[table] = f"ERROR: {e}"
+
+        res = {
+            "runtime_db": str(hub.db_path),
+            "table_counts": counts,
+        }
+        _json_print(res)
+        return 0
+    except Exception as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+
+
+def cmd_data_hub_video(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.data_hub.runtime_hub import RuntimeDataHub
+
+        hub = RuntimeDataHub.load_from_directory(Path(args.runtime_dir))
+        vid = args.video_id
+        v_rec = hub.get_video(vid)
+        if not v_rec:
+            _json_print({"status": "NOT_FOUND", "video_id": vid})
+            return 2
+
+        media = hub.get_media_info(vid)
+        memberships = hub.get_memberships(vid)
+        btc_kfs = hub.get_keyframes_near(vid, timestamp_ms=30000, frame_space="BTC", window_ms=30000)
+        custom_kfs = hub.get_keyframes_near(vid, timestamp_ms=30000, frame_space="CUSTOM", window_ms=30000)
+        asr_segs = hub.get_asr_near(vid, timestamp_ms=30000, window_ms=30000)
+        ocr_items = hub.get_ocr_near(vid, timestamp_ms=30000, window_ms=30000)
+
+        res = {
+            "video": v_rec,
+            "media_info": media,
+            "memberships": memberships,
+            "sample_btc_keyframes_count_near_30s": len(btc_kfs),
+            "sample_custom_keyframes_count_near_30s": len(custom_kfs),
+            "sample_asr_segments_count_near_30s": len(asr_segs),
+            "sample_ocr_items_count_near_30s": len(ocr_items),
+        }
+        _json_print(res)
+        return 0
+    except Exception as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aic", description="AIC 2026 reliability/control-plane CLI")
     sub = parser.add_subparsers(dest="command", required=True)
+
+    p = sub.add_parser("build-data-hub-runtime", help="xây dựng production Data Hub mapping.sqlite, FTS5, và Index Registry")
+    p.add_argument("--video-catalog", required=True, help="thư mục canonical universe (M1A)")
+    p.add_argument("--custom-qwen-dir", required=True, help="thư mục canonical custom qwen (M1B)")
+    p.add_argument("--asr-ocr-dir", required=True, help="thư mục canonical ASR OCR (M1C)")
+    p.add_argument("--btc-dir", required=True, help="thư mục canonical BTC (M1D)")
+    p.add_argument("--out", required=True, help="thư mục output retrieval_data_v1")
+    p.set_defaults(func=cmd_build_data_hub_runtime)
+
+    p = sub.add_parser("validate-data-hub-runtime", help="xác thực fail-closed Data Hub runtime DB, FKs, FTS5")
+    p.add_argument("--runtime-dir", required=True, help="thư mục retrieval_data_v1")
+    p.set_defaults(func=cmd_validate_data_hub_runtime)
+
+    p = sub.add_parser("data-hub-summary", help="in tóm tắt thống kê số bản ghi các bảng trong Data Hub runtime")
+    p.add_argument("--runtime-dir", required=True, help="thư mục retrieval_data_v1")
+    p.set_defaults(func=cmd_data_hub_summary)
+
+    p = sub.add_parser("data-hub-video", help="truy vấn chi tiết đa phương thức của một video từ Data Hub runtime")
+    p.add_argument("--runtime-dir", required=True, help="thư mục retrieval_data_v1")
+    p.add_argument("--video-id", required=True, help="video ID cần xem")
+    p.set_defaults(func=cmd_data_hub_video)
 
     p = sub.add_parser("build-btc-catalog", help="xây dựng canonical BTC keyframes, CLIP rowmap, objects, media-info")
     p.add_argument("--map-keyframes", required=True, help="thư mục chứa 873 map CSVs")

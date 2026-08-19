@@ -57,6 +57,20 @@ from aic2026.data_hub.validator import (
 )
 from aic2026.data_hub.video_registry import VideoRegistry
 
+from aic2026.data_hub.index_registry_models import (
+    ArtifactRegistryRecord,
+    VectorIndexRecord,
+)
+from aic2026.data_hub.runtime_builder import DataHubRuntimeBuilder
+from aic2026.data_hub.runtime_hub import RuntimeDataHub
+from aic2026.data_hub.taxonomy_builder import TaxonomyBuilder
+from aic2026.data_hub.taxonomy_models import (
+    TaxonomyNodeRecord,
+    TaxonomySpace,
+    VideoMembershipRecord,
+)
+from aic2026.data_hub.text_normalizer import TextNormalizer
+
 __all__ = [
     # Video Catalog
     "VideoRecord",
@@ -102,4 +116,15 @@ __all__ = [
     "BtcValidator",
     "BtcCatalogBuilder",
     "BtcRegistry",
+    # Runtime, Taxonomy & Index Registry (M1E)
+    "TextNormalizer",
+    "TaxonomyNodeRecord",
+    "VideoMembershipRecord",
+    "TaxonomySpace",
+    "TaxonomyBuilder",
+    "VectorIndexRecord",
+    "ArtifactRegistryRecord",
+    "DataHubRuntimeBuilder",
+    "RuntimeDataHub",
 ]
+

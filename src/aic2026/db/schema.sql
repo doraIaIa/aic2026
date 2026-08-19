@@ -213,6 +213,7 @@ CREATE TABLE IF NOT EXISTS embeddings (
     UNIQUE(target_type, target_id, model_name, model_version, config_hash, index_version)
 );
 
+-- Legacy transcripts table preserved
 CREATE TABLE IF NOT EXISTS transcripts (
     transcript_id INTEGER PRIMARY KEY,
     video_id TEXT NOT NULL REFERENCES videos(video_id),
@@ -242,32 +243,6 @@ CREATE TRIGGER IF NOT EXISTS transcripts_au AFTER UPDATE ON transcripts BEGIN
     INSERT INTO transcripts_fts(rowid, text_norm) VALUES (new.transcript_id, new.text_norm);
 END;
 
-CREATE TABLE IF NOT EXISTS ocr_text (
-    ocr_id INTEGER PRIMARY KEY,
-    keyframe_id TEXT NOT NULL REFERENCES keyframes(keyframe_id),
-    text_raw TEXT NOT NULL,
-    text_norm TEXT NOT NULL,
-    confidence REAL,
-    model_name TEXT NOT NULL,
-    model_version TEXT NOT NULL DEFAULT ''
-);
-
-CREATE VIRTUAL TABLE IF NOT EXISTS ocr_fts USING fts5(
-    text_norm,
-    content='ocr_text',
-    content_rowid='ocr_id'
-);
-
-CREATE TRIGGER IF NOT EXISTS ocr_ai AFTER INSERT ON ocr_text BEGIN
-    INSERT INTO ocr_fts(rowid, text_norm) VALUES (new.ocr_id, new.text_norm);
-END;
-CREATE TRIGGER IF NOT EXISTS ocr_ad AFTER DELETE ON ocr_text BEGIN
-    INSERT INTO ocr_fts(ocr_fts, rowid, text_norm) VALUES('delete', old.ocr_id, old.text_norm);
-END;
-CREATE TRIGGER IF NOT EXISTS ocr_au AFTER UPDATE ON ocr_text BEGIN
-    INSERT INTO ocr_fts(ocr_fts, rowid, text_norm) VALUES('delete', old.ocr_id, old.text_norm);
-    INSERT INTO ocr_fts(rowid, text_norm) VALUES (new.ocr_id, new.text_norm);
-END;
 
 CREATE TABLE IF NOT EXISTS processing_jobs (
     job_id TEXT PRIMARY KEY,
@@ -430,4 +405,138 @@ CREATE TABLE IF NOT EXISTS media_info (
     source_id TEXT NOT NULL DEFAULT 'btc_media_info_raw_v1',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- =====================================================================
+-- Data Hub Runtime & Taxonomy Tables (M1E)
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS runtime_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS taxonomy_nodes (
+    branch_id TEXT PRIMARY KEY,
+    branch_type TEXT NOT NULL,
+    label_vi TEXT NOT NULL,
+    label_en TEXT NOT NULL,
+    parent_ids_json TEXT NOT NULL DEFAULT '[]',
+    aliases_json TEXT NOT NULL DEFAULT '[]',
+    requires_region_index INTEGER NOT NULL DEFAULT 0,
+    active INTEGER NOT NULL DEFAULT 1,
+    schema_version TEXT NOT NULL DEFAULT 'v1',
+    source_id TEXT NOT NULL DEFAULT 'taxonomy_authority_v1',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_tax_type ON taxonomy_nodes(branch_type);
+
+CREATE TABLE IF NOT EXISTS video_memberships (
+    membership_id TEXT PRIMARY KEY,
+    video_id TEXT NOT NULL REFERENCES videos(video_id),
+    branch_id TEXT NOT NULL REFERENCES taxonomy_nodes(branch_id),
+    membership_type TEXT NOT NULL,
+    status TEXT NOT NULL,
+    confidence REAL,
+    score_type TEXT DEFAULT 'heuristic',
+    evidence TEXT,
+    prune_override TEXT,
+    schema_version TEXT NOT NULL DEFAULT 'v1',
+    source_id TEXT NOT NULL DEFAULT 'taxonomy_authority_v1',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(video_id, branch_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vm_branch_video ON video_memberships(branch_id, video_id);
+CREATE INDEX IF NOT EXISTS idx_vm_video_branch ON video_memberships(video_id, branch_id);
+CREATE INDEX IF NOT EXISTS idx_vm_status ON video_memberships(status);
+
+CREATE TABLE IF NOT EXISTS artifacts (
+    artifact_id TEXT PRIMARY KEY,
+    artifact_type TEXT NOT NULL,
+    schema_version TEXT NOT NULL DEFAULT 'v1',
+    entity_space TEXT NOT NULL,
+    logical_ref TEXT NOT NULL,
+    record_count INTEGER NOT NULL,
+    checksum TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'READY',
+    built_from TEXT NOT NULL,
+    producer TEXT,
+    notes_json TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_artifacts_space ON artifacts(entity_space);
+CREATE INDEX IF NOT EXISTS idx_artifacts_status ON artifacts(status);
+
+CREATE TABLE IF NOT EXISTS vector_indexes (
+    index_id TEXT PRIMARY KEY,
+    artifact_type TEXT NOT NULL,
+    entity_space TEXT NOT NULL,
+    frame_space TEXT,
+    model_id TEXT NOT NULL,
+    dimension INTEGER NOT NULL,
+    dtype TEXT NOT NULL,
+    normalized INTEGER NOT NULL DEFAULT 1,
+    row_count INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    logical_ref TEXT NOT NULL,
+    built_from TEXT NOT NULL,
+    model_revision TEXT,
+    metric TEXT,
+    rowmap_count INTEGER,
+    rowmap_checksum TEXT,
+    artifact_checksum TEXT,
+    query_preprocessing_version TEXT,
+    ordinal_space_id TEXT,
+    notes_json TEXT NOT NULL DEFAULT '[]',
+    schema_version TEXT NOT NULL DEFAULT 'v1',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_vec_space ON vector_indexes(entity_space);
+CREATE INDEX IF NOT EXISTS idx_vec_status ON vector_indexes(status);
+
+-- =====================================================================
+-- Modality-Separated FTS5 Virtual Tables (M1E)
+-- =====================================================================
+
+CREATE VIRTUAL TABLE IF NOT EXISTS asr_fts USING fts5(
+    segment_uid UNINDEXED,
+    video_id UNINDEXED,
+    text_raw,
+    text_norm,
+    text_accentless,
+    tokenize = 'unicode61'
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS ocr_fts USING fts5(
+    ocr_uid UNINDEXED,
+    keyframe_uid UNINDEXED,
+    video_id UNINDEXED,
+    text_raw,
+    text_norm,
+    text_accentless,
+    tokenize = 'unicode61'
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS qwen_caption_fts USING fts5(
+    keyframe_uid UNINDEXED,
+    video_id UNINDEXED,
+    caption_raw,
+    caption_norm,
+    caption_accentless,
+    tokenize = 'unicode61'
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS media_fts USING fts5(
+    video_id UNINDEXED,
+    title_raw,
+    title_norm,
+    title_accentless,
+    keywords,
+    description,
+    tokenize = 'unicode61'
+);
+
 
