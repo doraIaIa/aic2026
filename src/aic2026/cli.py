@@ -6,6 +6,7 @@ import os
 import shutil
 import sqlite3
 import sys
+import time
 from pathlib import Path
 
 from aic2026.core.config import load_config
@@ -953,6 +954,89 @@ def cmd_validate_data_hub_drilldown(args: argparse.Namespace) -> int:
         return 2
 
 
+def cmd_build_siglip_index(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.siglip_index import build_siglip_index
+
+        runtime_dir = Path(args.runtime_dir) if args.runtime_dir else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1")
+        out_dir = Path(args.out_dir) if args.out_dir else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\siglip_custom_v1")
+        emb_root = Path(args.embedding_root) if args.embedding_root else None
+
+        passport = build_siglip_index(
+            runtime_dir=runtime_dir,
+            output_dir=out_dir,
+            embedding_root=emb_root,
+            self_test_count=args.self_test_count,
+            max_workers=args.workers,
+        )
+        _json_print(passport)
+        return 0
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+def cmd_search_siglip(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.providers.base import ProviderQuery
+        from aic2026.retrieval.providers.siglip import SigLIPProvider
+
+        index_dir = Path(args.index_dir) if args.index_dir else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\siglip_custom_v1")
+        provider = SigLIPProvider(index_dir, device=args.device)
+
+        video_ids = ()
+        if args.video_id:
+            video_ids = (args.video_id,)
+        elif args.video_ids_file:
+            with open(args.video_ids_file, "r", encoding="utf-8") as f:
+                video_ids = tuple(line.strip() for line in f if line.strip())
+
+        query = ProviderQuery(
+            query_text=args.query,
+            top_k=args.top_k,
+            video_ids=video_ids,
+        )
+        t0 = time.perf_counter()
+        hits = provider.search(query)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        if args.json:
+            _json_print({
+                "status": "OK",
+                "query": args.query,
+                "top_k": args.top_k,
+                "count": len(hits),
+                "elapsed_ms": round(elapsed_ms, 2),
+                "hits": [h.to_dict() for h in hits],
+            })
+        else:
+            print(f"SigLIP Search: '{args.query}' (took {elapsed_ms:.1f}ms, {len(hits)} hits)")
+            print(f"{'Rank':<5} {'Score':<8} {'Video ID':<12} {'Keyframe UID':<24} {'Time (ms)':<10} {'Frame Idx':<10}")
+            print("-" * 75)
+            for h in hits:
+                ts = h.payload.get("timestamp_ms", int(h.start_sec * 1000))
+                f_idx = h.payload.get("frame_idx", "-")
+                print(f"{h.rank:<5} {h.raw_score:<8.4f} {h.video_id:<12} {h.evidence_id:<24} {ts:<10} {f_idx:<10}")
+        return 0
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+def cmd_siglip_health(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.providers.siglip import SigLIPProvider
+
+        index_dir = Path(args.index_dir) if args.index_dir else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\siglip_custom_v1")
+        provider = SigLIPProvider(index_dir, device=args.device)
+        h = provider.health()
+        _json_print(h)
+        return 0 if h.get("status") == "OK" else 1
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aic", description="AIC 2026 reliability/control-plane CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1243,6 +1327,30 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--top-k", type=int, default=20)
     p.add_argument("--metadata", help="M1 metadata JSONL để map nearest verified keyframe")
     p.set_defaults(func=cmd_export_asr_candidates)
+
+    # SigLIP Custom Retrieval Lane (M2A)
+    p = sub.add_parser("build-siglip-index", help="xây FAISS IndexFlatIP từ 116767 CUSTOM SigLIP2 embeddings")
+    p.add_argument("--runtime-dir", help="đường dẫn retrieval_data_v1 chứa mapping.sqlite")
+    p.add_argument("--out-dir", help="output directory cho FAISS index và rowmap")
+    p.add_argument("--embedding-root", help="root chứa output/embeddings/*.npy")
+    p.add_argument("--self-test-count", type=int, default=20)
+    p.add_argument("--workers", type=int, default=16)
+    p.set_defaults(func=cmd_build_siglip_index)
+
+    p = sub.add_parser("search-siglip", help="truy vấn visual bằng SigLIP2 text encoder qua FAISS FlatIP")
+    p.add_argument("query", help="nội dung text query")
+    p.add_argument("--index-dir", help="directory chứa siglip_custom.faiss và rowmap")
+    p.add_argument("--top-k", type=int, default=20)
+    p.add_argument("--video-id", help="scope tìm kiếm trong 1 video cụ thể")
+    p.add_argument("--video-ids-file", help="scope tìm kiếm trong danh sách video (mỗi dòng 1 video_id)")
+    p.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    p.add_argument("--json", action="store_true", help="output json format")
+    p.set_defaults(func=cmd_search_siglip)
+
+    p = sub.add_parser("siglip-health", help="kiểm tra trạng thái index và model của SigLIP2 lane")
+    p.add_argument("--index-dir", help="directory chứa siglip_custom.faiss và rowmap")
+    p.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    p.set_defaults(func=cmd_siglip_health)
 
     return parser
 

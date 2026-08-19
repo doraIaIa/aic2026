@@ -17,7 +17,8 @@ from aic2026.media.resolver import MediaResolver
 from aic2026.retrieval.capabilities import CapabilityService
 from aic2026.retrieval.contract import RetrievalContractError
 from aic2026.retrieval.orchestrator import SearchOrchestrator
-from aic2026.retrieval.providers import AsrProvider, ObjectProvider, VisualProvider
+from aic2026.retrieval.providers import AsrProvider, ObjectProvider, SigLIPProvider, VisualProvider
+from aic2026.retrieval.providers.base import ProviderQuery
 from aic2026.search.asr import AsrSearchError, search_asr
 from aic2026.workspace import WorkspaceError, WorkspaceStore
 
@@ -27,16 +28,72 @@ DEFAULT_PORT = 8765
 
 
 class AsrSearchApi:
-    """Thin HTTP adapter around the canonical ASR search implementation."""
+    """Thin HTTP adapter around canonical search implementations and lane providers."""
 
-    def __init__(self, database: str | Path, capability_service: CapabilityService | None = None, orchestrator: SearchOrchestrator | None = None, media_resolver: MediaResolver | None = None) -> None:
+    def __init__(
+        self,
+        database: str | Path,
+        capability_service: CapabilityService | None = None,
+        orchestrator: SearchOrchestrator | None = None,
+        media_resolver: MediaResolver | None = None,
+        siglip_provider: SigLIPProvider | None = None,
+    ) -> None:
         self.database = Path(database)
         self.capability_service = capability_service or CapabilityService(
             {"asr": AsrProvider(self.database)}
         )
         self.orchestrator = orchestrator or SearchOrchestrator(self.capability_service.providers)
         self.media_resolver = media_resolver
+        self.siglip_provider = siglip_provider
         self.workspace = WorkspaceStore(self.database)
+
+    def siglip_health(self) -> tuple[int, dict[str, Any]]:
+        if self.siglip_provider is None:
+            # Try loading default location
+            default_index_dir = Path(r"F:\AIC_WORK\artifacts\retrieval_v2\siglip_custom_v1")
+            if default_index_dir.exists():
+                self.siglip_provider = SigLIPProvider(default_index_dir)
+            else:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {
+                    "lane_id": "siglip_custom",
+                    "status": "UNAVAILABLE",
+                    "error": "SigLIP index directory not found",
+                }
+        h = self.siglip_provider.health()
+        status_code = HTTPStatus.OK if h.get("status") == "OK" else HTTPStatus.SERVICE_UNAVAILABLE
+        return status_code, h
+
+    def siglip_search(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        if self.siglip_provider is None:
+            default_index_dir = Path(r"F:\AIC_WORK\artifacts\retrieval_v2\siglip_custom_v1")
+            if default_index_dir.exists():
+                self.siglip_provider = SigLIPProvider(default_index_dir)
+            else:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {
+                    "status": "ERROR",
+                    "error": "SigLIP index directory not found",
+                }
+        query_text = request.get("query") or request.get("query_text") or ""
+        if not isinstance(query_text, str) or not query_text.strip():
+            return HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": "query is required"}
+        top_k = int(request.get("top_k", 20))
+        video_ids = tuple(request.get("candidate_video_ids") or request.get("video_ids") or ())
+
+        query = ProviderQuery(query_text=query_text, top_k=top_k, video_ids=video_ids)
+        t0 = time.perf_counter()
+        hits = self.siglip_provider.search(query)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        return HTTPStatus.OK, {
+            "status": "OK",
+            "lane": "siglip_custom",
+            "query": query_text,
+            "query_id": request.get("query_id"),
+            "top_k": top_k,
+            "count": len(hits),
+            "elapsed_ms": round(elapsed_ms, 2),
+            "hits": [h.to_dict() for h in hits],
+        }
 
     def health(self) -> tuple[int, dict[str, Any]]:
         if not self.database.is_file():
@@ -143,6 +200,8 @@ def make_handler(
                     status, payload = application.health()
                 elif parsed.path == "/api/v1/capabilities":
                     status, payload = application.capabilities()
+                elif parsed.path == "/api/v1/lanes/siglip/health":
+                    status, payload = application.siglip_health()
                 elif parsed.path == "/api/asr/search":
                     status, payload = application.search(parse_qs(parsed.query, keep_blank_values=True))
                 else:
@@ -156,7 +215,10 @@ def make_handler(
 
         def do_POST(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
-            if parsed.path not in {"/api/v1/search", "/api/v1/workspace"} and not parsed.path.startswith("/api/v1/workspace/"):
+            if (
+                parsed.path not in {"/api/v1/search", "/api/v1/workspace", "/api/v1/lanes/siglip/search"}
+                and not parsed.path.startswith("/api/v1/workspace/")
+            ):
                 self._write_json(HTTPStatus.NOT_FOUND, {"status": "ERROR", "error": "Endpoint not found"})
                 return
             try:
@@ -166,6 +228,8 @@ def make_handler(
                 request = json.loads(self.rfile.read(length).decode("utf-8"))
                 if parsed.path == "/api/v1/search":
                     status, payload = application.unified_search(request)
+                elif parsed.path == "/api/v1/lanes/siglip/search":
+                    status, payload = application.siglip_search(request)
                 else:
                     entry_id = parsed.path.rsplit("/", 1)[-1] if parsed.path != "/api/v1/workspace" else None
                     status, payload = HTTPStatus.OK, application.workspace.save(request, entry_id=entry_id)
