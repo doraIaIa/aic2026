@@ -35,6 +35,7 @@ from aic2026.evaluation.runner import (
     run_baseline_evaluation,
     validate_eval_run_artifact,
 )
+from aic2026.retrieval.providers.base import ProviderQuery
 from aic2026.asr.fts import build_asr_fts, search_asr
 from aic2026.asr.manifest import AsrContractError, build_asr_pilot_manifest
 from aic2026.asr.merge import merge_asr_shards
@@ -1250,9 +1251,217 @@ def cmd_asr_bge_health(args: argparse.Namespace) -> int:
         return 2
 
 
+def cmd_build_ocr_trigram(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.ocr_trigram_index import build_ocr_trigram_index
+
+        db_path = Path(args.db) if args.db else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+        out_dir = Path(args.out) if args.out else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\ocr_trigram_v1")
+        limit = args.limit if hasattr(args, "limit") else None
+
+        passport = build_ocr_trigram_index(db_path, out_dir, batch_size=args.batch_size, limit=limit)
+        _json_print(passport)
+        return 0
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+def cmd_search_ocr_bm25(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.providers.ocr_bm25 import OcrBm25Provider
+
+        db_path = Path(args.db) if args.db else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+        provider = OcrBm25Provider(db_path)
+
+        video_ids = ()
+        if args.video_id:
+            video_ids = (args.video_id,)
+        elif args.video_ids_file:
+            with open(args.video_ids_file, "r", encoding="utf-8") as f:
+                video_ids = tuple(line.strip() for line in f if line.strip())
+
+        query = ProviderQuery(query_text=args.query, top_k=args.top_k, video_ids=video_ids)
+        t0 = time.perf_counter()
+        hits = provider.search(query)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        if args.json:
+            _json_print({
+                "status": "OK",
+                "lane": "ocr_bm25",
+                "query": args.query,
+                "top_k": args.top_k,
+                "count": len(hits),
+                "elapsed_ms": round(elapsed_ms, 2),
+                "hits": [h.to_dict() for h in hits],
+            })
+        else:
+            print(f"OCR BM25 Search: '{args.query}' (took {elapsed_ms:.1f}ms, {len(hits)} hits)")
+            print(f"{'Rank':<5} {'Score':<8} {'Video ID':<12} {'OCR UID':<32} {'Time (s)':<10} {'Confidence':<10} {'Text':<35}")
+            print("-" * 115)
+            for h in hits:
+                time_str = f"{h.start_sec:.2f}"
+                conf = f"{h.payload.get('ocr_confidence', 1.0):.2f}"
+                text_snippet = h.payload.get("text_raw", "")[:33]
+                print(f"{h.rank:<5} {h.raw_score:<8.4f} {h.video_id:<12} {h.evidence_id:<32} {time_str:<10} {conf:<10} {text_snippet:<35}")
+        return 0
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+def cmd_ocr_bm25_health(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.providers.ocr_bm25 import OcrBm25Provider
+
+        db_path = Path(args.db) if args.db else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+        provider = OcrBm25Provider(db_path)
+        h = provider.health()
+        _json_print(h)
+        return 0 if h.get("status") == "OK" else 1
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+def cmd_search_ocr_trigram(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.providers.ocr_trigram import OcrTrigramProvider
+
+        artifact_dir = Path(args.artifact_dir) if args.artifact_dir else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\ocr_trigram_v1")
+        db_path = Path(args.db) if args.db else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+        provider = OcrTrigramProvider(artifact_dir, canonical_db_path=db_path)
+
+        video_ids = ()
+        if args.video_id:
+            video_ids = (args.video_id,)
+        elif args.video_ids_file:
+            with open(args.video_ids_file, "r", encoding="utf-8") as f:
+                video_ids = tuple(line.strip() for line in f if line.strip())
+
+        query = ProviderQuery(query_text=args.query, top_k=args.top_k, video_ids=video_ids)
+        t0 = time.perf_counter()
+        hits = provider.search(query)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        if args.json:
+            _json_print({
+                "status": "OK",
+                "lane": "ocr_trigram",
+                "query": args.query,
+                "top_k": args.top_k,
+                "count": len(hits),
+                "elapsed_ms": round(elapsed_ms, 2),
+                "hits": [h.to_dict() for h in hits],
+            })
+        else:
+            print(f"OCR Trigram Search: '{args.query}' (took {elapsed_ms:.1f}ms, {len(hits)} hits)")
+            print(f"{'Rank':<5} {'Score':<8} {'Video ID':<12} {'OCR UID':<32} {'Time (s)':<10} {'Confidence':<10} {'Text':<35}")
+            print("-" * 115)
+            for h in hits:
+                time_str = f"{h.start_sec:.2f}"
+                conf = f"{h.payload.get('ocr_confidence', 1.0):.2f}"
+                text_snippet = h.payload.get("text_raw", "")[:33]
+                print(f"{h.rank:<5} {h.raw_score:<8.4f} {h.video_id:<12} {h.evidence_id:<32} {time_str:<10} {conf:<10} {text_snippet:<35}")
+        return 0
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+def cmd_ocr_trigram_health(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.providers.ocr_trigram import OcrTrigramProvider
+
+        artifact_dir = Path(args.artifact_dir) if args.artifact_dir else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\ocr_trigram_v1")
+        provider = OcrTrigramProvider(artifact_dir)
+        h = provider.health()
+        _json_print(h)
+        return 0 if h.get("status") == "OK" else 1
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+def cmd_build_ocr_bge(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.ocr_bge_index import build_ocr_bge_index
+
+        shards_dir = Path(args.shards_dir) if args.shards_dir else Path(r"G:\.shortcut-targets-by-id\1DRuEcR4suoHb4rKrPDtzt9FRfkvfqfHv\AIC_2026\ocr_single_text_retrieval")
+        out_dir = Path(args.out) if args.out else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\ocr_bge_v1")
+
+        passport = build_ocr_bge_index(shards_dir, out_dir)
+        _json_print(passport)
+        return 0
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+def cmd_search_ocr_bge(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.providers.ocr_bge import OcrBgeProvider
+
+        artifact_dir = Path(args.artifact_dir) if args.artifact_dir else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\ocr_bge_v1")
+        db_path = Path(args.db) if args.db else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+        provider = OcrBgeProvider(artifact_dir, canonical_db_path=db_path)
+
+        video_ids = ()
+        if args.video_id:
+            video_ids = (args.video_id,)
+        elif args.video_ids_file:
+            with open(args.video_ids_file, "r", encoding="utf-8") as f:
+                video_ids = tuple(line.strip() for line in f if line.strip())
+
+        query = ProviderQuery(query_text=args.query, top_k=args.top_k, video_ids=video_ids)
+        t0 = time.perf_counter()
+        hits = provider.search(query)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        if args.json:
+            _json_print({
+                "status": "OK",
+                "lane": "ocr_bge",
+                "query": args.query,
+                "top_k": args.top_k,
+                "count": len(hits),
+                "elapsed_ms": round(elapsed_ms, 2),
+                "hits": [h.to_dict() for h in hits],
+            })
+        else:
+            print(f"OCR BGE-M3 Search: '{args.query}' (took {elapsed_ms:.1f}ms, {len(hits)} hits)")
+            print(f"{'Rank':<5} {'Score':<8} {'Video ID':<12} {'OCR UID':<32} {'Time (s)':<10} {'Confidence':<10} {'Text':<35}")
+            print("-" * 115)
+            for h in hits:
+                time_str = f"{h.start_sec:.2f}"
+                conf = f"{h.payload.get('ocr_confidence', 1.0):.2f}"
+                text_snippet = h.payload.get("text_raw", "")[:33]
+                print(f"{h.rank:<5} {h.raw_score:<8.4f} {h.video_id:<12} {h.evidence_id:<32} {time_str:<10} {conf:<10} {text_snippet:<35}")
+        return 0
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+def cmd_ocr_bge_health(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.providers.ocr_bge import OcrBgeProvider
+
+        artifact_dir = Path(args.artifact_dir) if args.artifact_dir else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\ocr_bge_v1")
+        provider = OcrBgeProvider(artifact_dir)
+        h = provider.health()
+        _json_print(h)
+        return 0 if h.get("status") == "OK" else 1
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aic", description="AIC 2026 reliability/control-plane CLI")
     sub = parser.add_subparsers(dest="command", required=True)
+
 
     p = sub.add_parser("build-data-hub-runtime", help="xây dựng production Data Hub mapping.sqlite, FTS5, và Index Registry")
     p.add_argument("--video-catalog", required=True, help="thư mục canonical universe (M1A)")
@@ -1619,7 +1828,61 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     p.set_defaults(func=cmd_asr_bge_health)
 
+    # --- OCR Lanes (M4C) ---
+    p = sub.add_parser("build-ocr-trigram", help="xây dựng SQLite FTS5 Trigram index từ canonical ocr_items")
+    p.add_argument("--db", help="đường dẫn mapping.sqlite")
+    p.add_argument("--out", help="output directory cho ocr_trigram.sqlite")
+    p.add_argument("--batch-size", type=int, default=50000)
+    p.set_defaults(func=cmd_build_ocr_trigram)
+
+    p = sub.add_parser("search-ocr-bm25", help="truy vấn OCR lexical bằng SQLite FTS5 / BM25")
+    p.add_argument("query", help="nội dung text query")
+    p.add_argument("--db", help="đường dẫn mapping.sqlite")
+    p.add_argument("--top-k", type=int, default=20)
+    p.add_argument("--video-id", help="scope tìm kiếm trong 1 video cụ thể")
+    p.add_argument("--video-ids-file", help="scope tìm kiếm trong danh sách video (mỗi dòng 1 video_id)")
+    p.add_argument("--json", action="store_true", help="output json format")
+    p.set_defaults(func=cmd_search_ocr_bm25)
+
+    p = sub.add_parser("ocr-bm25-health", help="kiểm tra trạng thái FTS5 và canonical OCR của OCR BM25 lane")
+    p.add_argument("--db", help="đường dẫn mapping.sqlite")
+    p.set_defaults(func=cmd_ocr_bm25_health)
+
+    p = sub.add_parser("search-ocr-trigram", help="truy vấn OCR typo-tolerant bằng FTS5 Trigram")
+    p.add_argument("query", help="nội dung text query")
+    p.add_argument("--artifact-dir", help="directory chứa ocr_trigram.sqlite")
+    p.add_argument("--db", help="đường dẫn mapping.sqlite")
+    p.add_argument("--top-k", type=int, default=20)
+    p.add_argument("--video-id", help="scope tìm kiếm trong 1 video cụ thể")
+    p.add_argument("--video-ids-file", help="scope tìm kiếm trong danh sách video (mỗi dòng 1 video_id)")
+    p.add_argument("--json", action="store_true", help="output json format")
+    p.set_defaults(func=cmd_search_ocr_trigram)
+
+    p = sub.add_parser("ocr-trigram-health", help="kiểm tra trạng thái OCR Trigram lane")
+    p.add_argument("--artifact-dir", help="directory chứa ocr_trigram.sqlite")
+    p.set_defaults(func=cmd_ocr_trigram_health)
+
+    p = sub.add_parser("build-ocr-bge", help="xây dựng FAISS IndexFlatIP từ 612,813 OCR BGE vectors")
+    p.add_argument("--shards-dir", help="thư mục chứa 10 shard BGE .npy và .json")
+    p.add_argument("--out", help="output directory cho ocr_bge.faiss và rowmap")
+    p.set_defaults(func=cmd_build_ocr_bge)
+
+    p = sub.add_parser("search-ocr-bge", help="truy vấn OCR semantic bằng BAAI/bge-m3 qua FAISS IndexFlatIP")
+    p.add_argument("query", help="nội dung text query")
+    p.add_argument("--artifact-dir", help="directory chứa ocr_bge.faiss và rowmap")
+    p.add_argument("--db", help="đường dẫn mapping.sqlite")
+    p.add_argument("--top-k", type=int, default=20)
+    p.add_argument("--video-id", help="scope tìm kiếm trong 1 video cụ thể")
+    p.add_argument("--video-ids-file", help="scope tìm kiếm trong danh sách video (mỗi dòng 1 video_id)")
+    p.add_argument("--json", action="store_true", help="output json format")
+    p.set_defaults(func=cmd_search_ocr_bge)
+
+    p = sub.add_parser("ocr-bge-health", help="kiểm tra trạng thái index và model của OCR BGE lane")
+    p.add_argument("--artifact-dir", help="directory chứa ocr_bge.faiss và rowmap")
+    p.set_defaults(func=cmd_ocr_bge_health)
+
     return parser
+
 
 
 def main(argv: list[str] | None = None) -> int:

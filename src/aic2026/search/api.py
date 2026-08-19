@@ -23,6 +23,9 @@ from aic2026.retrieval.providers import (
     AsrProvider,
     BtcClipProvider,
     ObjectProvider,
+    OcrBgeProvider,
+    OcrBm25Provider,
+    OcrTrigramProvider,
     SigLIPProvider,
     VisualProvider,
 )
@@ -48,6 +51,9 @@ class AsrSearchApi:
         btc_clip_provider: BtcClipProvider | None = None,
         asr_bm25_provider: AsrBm25Provider | None = None,
         asr_bge_provider: AsrBgeProvider | None = None,
+        ocr_bm25_provider: OcrBm25Provider | None = None,
+        ocr_trigram_provider: OcrTrigramProvider | None = None,
+        ocr_bge_provider: OcrBgeProvider | None = None,
     ) -> None:
         self.database = Path(database)
         self.capability_service = capability_service or CapabilityService(
@@ -59,7 +65,11 @@ class AsrSearchApi:
         self.btc_clip_provider = btc_clip_provider
         self.asr_bm25_provider = asr_bm25_provider
         self.asr_bge_provider = asr_bge_provider
+        self.ocr_bm25_provider = ocr_bm25_provider
+        self.ocr_trigram_provider = ocr_trigram_provider
+        self.ocr_bge_provider = ocr_bge_provider
         self.workspace = WorkspaceStore(self.database)
+
 
     def siglip_health(self) -> tuple[int, dict[str, Any]]:
         if self.siglip_provider is None:
@@ -248,6 +258,140 @@ class AsrSearchApi:
             "hits": [h.to_dict() for h in hits],
         }
 
+    def ocr_bm25_health(self) -> tuple[int, dict[str, Any]]:
+        if self.ocr_bm25_provider is None:
+            default_db = self.database if self.database.exists() else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+            if default_db.exists():
+                self.ocr_bm25_provider = OcrBm25Provider(default_db)
+            else:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {
+                    "lane_id": "ocr_bm25",
+                    "status": "UNAVAILABLE",
+                    "error": "OCR database not found",
+                }
+        h = self.ocr_bm25_provider.health()
+        status_code = HTTPStatus.OK if h.get("status") == "OK" else HTTPStatus.SERVICE_UNAVAILABLE
+        return status_code, h
+
+    def ocr_bm25_search(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        if self.ocr_bm25_provider is None:
+            status_code, _ = self.ocr_bm25_health()
+            if status_code != HTTPStatus.OK:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {"status": "ERROR", "error": "OCR BM25 lane unavailable"}
+        assert self.ocr_bm25_provider is not None
+
+        query_text = request.get("query") or request.get("q") or ""
+        if not isinstance(query_text, str) or not query_text.strip():
+            return HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": "query is required"}
+        top_k = int(request.get("top_k", 20))
+        video_ids = tuple(request.get("candidate_video_ids") or request.get("video_ids") or ())
+
+        query = ProviderQuery(query_text=query_text, top_k=top_k, video_ids=video_ids)
+        t0 = time.perf_counter()
+        hits = self.ocr_bm25_provider.search(query)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        return HTTPStatus.OK, {
+            "status": "OK",
+            "lane": "ocr_bm25",
+            "query": query_text,
+            "query_id": request.get("query_id"),
+            "top_k": top_k,
+            "count": len(hits),
+            "elapsed_ms": round(elapsed_ms, 2),
+            "hits": [h.to_dict() for h in hits],
+        }
+
+    def ocr_trigram_health(self) -> tuple[int, dict[str, Any]]:
+        if self.ocr_trigram_provider is None:
+            default_dir = Path(r"F:\AIC_WORK\artifacts\retrieval_v2\ocr_trigram_v1")
+            default_db = self.database if self.database.exists() else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+            if default_dir.exists():
+                self.ocr_trigram_provider = OcrTrigramProvider(default_dir, canonical_db_path=default_db)
+            else:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {
+                    "lane_id": "ocr_trigram",
+                    "status": "UNAVAILABLE",
+                    "error": "OCR Trigram artifact directory not found",
+                }
+        h = self.ocr_trigram_provider.health()
+        status_code = HTTPStatus.OK if h.get("status") == "OK" else HTTPStatus.SERVICE_UNAVAILABLE
+        return status_code, h
+
+    def ocr_trigram_search(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        if self.ocr_trigram_provider is None:
+            status_code, _ = self.ocr_trigram_health()
+            if status_code != HTTPStatus.OK:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {"status": "ERROR", "error": "OCR Trigram lane unavailable"}
+        assert self.ocr_trigram_provider is not None
+
+        query_text = request.get("query") or request.get("q") or ""
+        if not isinstance(query_text, str) or not query_text.strip():
+            return HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": "query is required"}
+        top_k = int(request.get("top_k", 20))
+        video_ids = tuple(request.get("candidate_video_ids") or request.get("video_ids") or ())
+
+        query = ProviderQuery(query_text=query_text, top_k=top_k, video_ids=video_ids)
+        t0 = time.perf_counter()
+        hits = self.ocr_trigram_provider.search(query)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        return HTTPStatus.OK, {
+            "status": "OK",
+            "lane": "ocr_trigram",
+            "query": query_text,
+            "query_id": request.get("query_id"),
+            "top_k": top_k,
+            "count": len(hits),
+            "elapsed_ms": round(elapsed_ms, 2),
+            "hits": [h.to_dict() for h in hits],
+        }
+
+    def ocr_bge_health(self) -> tuple[int, dict[str, Any]]:
+        if self.ocr_bge_provider is None:
+            default_dir = Path(r"F:\AIC_WORK\artifacts\retrieval_v2\ocr_bge_v1")
+            default_db = self.database if self.database.exists() else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+            if default_dir.exists():
+                self.ocr_bge_provider = OcrBgeProvider(default_dir, canonical_db_path=default_db)
+            else:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {
+                    "lane_id": "ocr_bge",
+                    "status": "UNAVAILABLE",
+                    "error": "OCR BGE artifact directory not found",
+                }
+        h = self.ocr_bge_provider.health()
+        status_code = HTTPStatus.OK if h.get("status") == "OK" else HTTPStatus.SERVICE_UNAVAILABLE
+        return status_code, h
+
+    def ocr_bge_search(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        if self.ocr_bge_provider is None:
+            status_code, _ = self.ocr_bge_health()
+            if status_code != HTTPStatus.OK:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {"status": "ERROR", "error": "OCR BGE lane unavailable"}
+        assert self.ocr_bge_provider is not None
+
+        query_text = request.get("query") or request.get("q") or ""
+        if not isinstance(query_text, str) or not query_text.strip():
+            return HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": "query is required"}
+        top_k = int(request.get("top_k", 20))
+        video_ids = tuple(request.get("candidate_video_ids") or request.get("video_ids") or ())
+
+        query = ProviderQuery(query_text=query_text, top_k=top_k, video_ids=video_ids)
+        t0 = time.perf_counter()
+        hits = self.ocr_bge_provider.search(query)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        return HTTPStatus.OK, {
+            "status": "OK",
+            "lane": "ocr_bge",
+            "query": query_text,
+            "query_id": request.get("query_id"),
+            "top_k": top_k,
+            "count": len(hits),
+            "elapsed_ms": round(elapsed_ms, 2),
+            "hits": [h.to_dict() for h in hits],
+        }
+
     def health(self) -> tuple[int, dict[str, Any]]:
         if not self.database.is_file():
             return HTTPStatus.SERVICE_UNAVAILABLE, {
@@ -361,6 +505,12 @@ def make_handler(
                     status, payload = application.asr_bm25_health()
                 elif parsed.path in {"/api/v1/lanes/asr-bge/health", "/api/v1/lanes/asr_bge/health"}:
                     status, payload = application.asr_bge_health()
+                elif parsed.path in {"/api/v1/lanes/ocr-bm25/health", "/api/v1/lanes/ocr_bm25/health"}:
+                    status, payload = application.ocr_bm25_health()
+                elif parsed.path in {"/api/v1/lanes/ocr-trigram/health", "/api/v1/lanes/ocr_trigram/health"}:
+                    status, payload = application.ocr_trigram_health()
+                elif parsed.path in {"/api/v1/lanes/ocr-bge/health", "/api/v1/lanes/ocr_bge/health"}:
+                    status, payload = application.ocr_bge_health()
                 elif parsed.path == "/api/asr/search":
                     status, payload = application.search(parse_qs(parsed.query, keep_blank_values=True))
                 else:
@@ -385,6 +535,12 @@ def make_handler(
                 "/api/v1/lanes/asr_bm25/search",
                 "/api/v1/lanes/asr-bge/search",
                 "/api/v1/lanes/asr_bge/search",
+                "/api/v1/lanes/ocr-bm25/search",
+                "/api/v1/lanes/ocr_bm25/search",
+                "/api/v1/lanes/ocr-trigram/search",
+                "/api/v1/lanes/ocr_trigram/search",
+                "/api/v1/lanes/ocr-bge/search",
+                "/api/v1/lanes/ocr_bge/search",
             }
             if (
                 parsed.path not in valid_post_paths
@@ -407,6 +563,12 @@ def make_handler(
                     status, payload = application.asr_bm25_search(request)
                 elif parsed.path in {"/api/v1/lanes/asr-bge/search", "/api/v1/lanes/asr_bge/search"}:
                     status, payload = application.asr_bge_search(request)
+                elif parsed.path in {"/api/v1/lanes/ocr-bm25/search", "/api/v1/lanes/ocr_bm25/search"}:
+                    status, payload = application.ocr_bm25_search(request)
+                elif parsed.path in {"/api/v1/lanes/ocr-trigram/search", "/api/v1/lanes/ocr_trigram/search"}:
+                    status, payload = application.ocr_trigram_search(request)
+                elif parsed.path in {"/api/v1/lanes/ocr-bge/search", "/api/v1/lanes/ocr_bge/search"}:
+                    status, payload = application.ocr_bge_search(request)
                 else:
                     entry_id = parsed.path.rsplit("/", 1)[-1] if parsed.path != "/api/v1/workspace" else None
                     status, payload = HTTPStatus.OK, application.workspace.save(request, entry_id=entry_id)
@@ -415,6 +577,7 @@ def make_handler(
             except Exception as exc:
                 status, payload = HTTPStatus.INTERNAL_SERVER_ERROR, {"status": "ERROR", "error": f"{type(exc).__name__}: {exc}"}
             self._write_json(status, payload)
+
 
         def do_DELETE(self) -> None:  # noqa: N802
             parsed = urlparse(self.path)
