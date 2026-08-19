@@ -324,3 +324,110 @@ CREATE TABLE IF NOT EXISTS eval_runs (
     run_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(experiment_id, query_id)
 );
+
+-- =====================================================================
+-- Canonical BTC Data Hub Tables (M1D)
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS btc_keyframes (
+    keyframe_uid TEXT PRIMARY KEY,
+    video_id TEXT NOT NULL REFERENCES videos(video_id),
+    video_ordinal INTEGER NOT NULL,
+    ordinal_space_id TEXT NOT NULL DEFAULT 'v1_natural_series_video',
+    local_keyframe_no INTEGER NOT NULL,
+    frame_idx INTEGER NOT NULL,
+    timestamp_ms INTEGER NOT NULL,
+    raw_pts_time REAL NOT NULL,
+    fps REAL NOT NULL,
+    image_relpath TEXT NOT NULL,
+    frame_space TEXT NOT NULL DEFAULT 'BTC',
+    btc_space_id TEXT NOT NULL DEFAULT 'btc_keyframes_v1',
+    map_source_id TEXT NOT NULL DEFAULT 'btc_map_keyframes_raw_v1',
+    clip_status TEXT NOT NULL DEFAULT 'HAS_CLIP_ROW',
+    object_status TEXT NOT NULL DEFAULT 'HAS_OBJECTS',
+    schema_version TEXT NOT NULL DEFAULT 'v1',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(video_id, local_keyframe_no)
+);
+
+CREATE INDEX IF NOT EXISTS idx_btc_kf_video_n ON btc_keyframes(video_id, local_keyframe_no);
+CREATE INDEX IF NOT EXISTS idx_btc_kf_video_time ON btc_keyframes(video_id, timestamp_ms);
+CREATE INDEX IF NOT EXISTS idx_btc_kf_video_ordinal ON btc_keyframes(video_ordinal);
+
+CREATE TABLE IF NOT EXISTS btc_clip_rows (
+    clip_source_id TEXT NOT NULL DEFAULT 'btc_clip_features_32_v1',
+    video_id TEXT NOT NULL REFERENCES videos(video_id),
+    video_ordinal INTEGER NOT NULL,
+    ordinal_space_id TEXT NOT NULL DEFAULT 'v1_natural_series_video',
+    row_in_video INTEGER NOT NULL,
+    keyframe_uid TEXT NOT NULL REFERENCES btc_keyframes(keyframe_uid),
+    local_keyframe_no INTEGER NOT NULL,
+    frame_idx INTEGER NOT NULL,
+    timestamp_ms INTEGER NOT NULL,
+    feature_relpath TEXT NOT NULL,
+    dimension INTEGER NOT NULL DEFAULT 512,
+    dtype TEXT NOT NULL DEFAULT 'float16',
+    normalized INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(video_id, row_in_video),
+    UNIQUE(keyframe_uid)
+);
+
+CREATE INDEX IF NOT EXISTS idx_btc_clip_kf ON btc_clip_rows(keyframe_uid);
+
+CREATE TABLE IF NOT EXISTS btc_objects (
+    detection_uid TEXT PRIMARY KEY,
+    keyframe_uid TEXT NOT NULL REFERENCES btc_keyframes(keyframe_uid),
+    video_id TEXT NOT NULL REFERENCES videos(video_id),
+    video_ordinal INTEGER NOT NULL,
+    local_keyframe_no INTEGER NOT NULL,
+    frame_idx INTEGER NOT NULL,
+    timestamp_ms INTEGER NOT NULL,
+    local_detection_index INTEGER NOT NULL,
+    class_name TEXT NOT NULL,
+    class_entity TEXT,
+    class_label TEXT,
+    confidence REAL NOT NULL,
+    bbox_json TEXT NOT NULL,
+    frame_space TEXT NOT NULL DEFAULT 'BTC',
+    source_id TEXT NOT NULL DEFAULT 'btc_objects_raw_v1',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_btc_obj_kf ON btc_objects(keyframe_uid);
+CREATE INDEX IF NOT EXISTS idx_btc_obj_class ON btc_objects(class_name);
+CREATE INDEX IF NOT EXISTS idx_btc_obj_entity ON btc_objects(class_entity);
+
+CREATE TABLE IF NOT EXISTS btc_object_coverage (
+    keyframe_uid TEXT PRIMARY KEY REFERENCES btc_keyframes(keyframe_uid),
+    video_id TEXT NOT NULL REFERENCES videos(video_id),
+    video_ordinal INTEGER NOT NULL,
+    local_keyframe_no INTEGER NOT NULL,
+    frame_idx INTEGER NOT NULL,
+    timestamp_ms INTEGER NOT NULL,
+    detection_count INTEGER NOT NULL DEFAULT 0,
+    object_status TEXT NOT NULL DEFAULT 'HAS_OBJECTS',
+    source_file_relpath TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_btc_obj_cov_status ON btc_object_coverage(object_status);
+
+CREATE TABLE IF NOT EXISTS media_info (
+    video_id TEXT PRIMARY KEY REFERENCES videos(video_id),
+    video_ordinal INTEGER NOT NULL,
+    ordinal_space_id TEXT NOT NULL DEFAULT 'v1_natural_series_video',
+    title TEXT NOT NULL,
+    description TEXT,
+    keywords_json TEXT NOT NULL DEFAULT '[]',
+    author TEXT,
+    channel_id TEXT,
+    channel_url TEXT,
+    publish_date TEXT,
+    duration_sec INTEGER,
+    thumbnail_url TEXT,
+    watch_url TEXT,
+    source_id TEXT NOT NULL DEFAULT 'btc_media_info_raw_v1',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+

@@ -14,6 +14,18 @@ from aic2026.data_hub.asr_ocr_models import (
 )
 from aic2026.data_hub.asr_ocr_registry import AsrOcrRegistry
 from aic2026.data_hub.asr_ocr_validator import AsrOcrValidator
+from aic2026.data_hub.btc_builder import BtcCatalogBuilder
+from aic2026.data_hub.btc_models import (
+    BtcClipRowRecord,
+    BtcKeyframeRecord,
+    BtcMediaInfoRecord,
+    BtcObjectCoverageRecord,
+    BtcObjectDetectionRecord,
+    BtcSpace,
+    BtcValidationResult,
+)
+from aic2026.data_hub.btc_registry import BtcRegistry
+from aic2026.data_hub.btc_validator import BtcValidator
 from aic2026.data_hub.builder import (
     build_canonical_video_records,
     materialize_video_catalog,
@@ -79,4 +91,15 @@ __all__ = [
     "AsrOcrCatalogBuilder",
     "AsrOcrRegistry",
     "normalize_canonical_text",
+    # BTC Space
+    "BtcKeyframeRecord",
+    "BtcClipRowRecord",
+    "BtcObjectDetectionRecord",
+    "BtcObjectCoverageRecord",
+    "BtcMediaInfoRecord",
+    "BtcSpace",
+    "BtcValidationResult",
+    "BtcValidator",
+    "BtcCatalogBuilder",
+    "BtcRegistry",
 ]

@@ -48,6 +48,9 @@ from aic2026.data_hub import (
     AsrOcrCatalogBuilder,
     AsrOcrRegistry,
     AsrOcrValidator,
+    BtcCatalogBuilder,
+    BtcRegistry,
+    BtcValidator,
     CustomKeyframeRegistry,
     CustomKeyframeValidator,
     VideoRegistry,
@@ -662,9 +665,83 @@ def cmd_validate_asr_ocr_catalog(args: argparse.Namespace) -> int:
         return 3
 
 
+def cmd_build_btc_catalog(args: argparse.Namespace) -> int:
+    try:
+        video_registry = VideoRegistry.load_from_directory(args.video_catalog, validate=True)
+        builder = BtcCatalogBuilder(video_registry=video_registry)
+        validation = builder.materialize(
+            output_dir=Path(args.out),
+            map_keyframes_dir=Path(args.map_keyframes),
+            clip_features_dir=Path(args.clip_features),
+            objects_zip_path=Path(args.objects_zip),
+            media_info_zip_path=Path(args.media_info_zip),
+            faiss_dir=Path(args.faiss_dir) if args.faiss_dir else None,
+        )
+        _json_print({
+            "status": "BUILT",
+            "btc_keyframes": validation.btc_keyframe_count,
+            "btc_videos": validation.btc_video_count,
+            "raw_clip_rows": validation.raw_clip_row_count,
+            "raw_clip_mapped_rows": validation.raw_clip_mapped_rows,
+            "object_detections": validation.object_detection_count,
+            "media_info_count": validation.media_info_count,
+            "output_directory": str(args.out),
+            "is_valid": validation.is_valid,
+        })
+        return 0
+    except Exception as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+
+
+def cmd_validate_btc_catalog(args: argparse.Namespace) -> int:
+    try:
+        video_registry = None
+        if args.video_catalog:
+            video_registry = VideoRegistry.load_from_directory(args.video_catalog, validate=False)
+
+        registry = BtcRegistry.load_from_dir(Path(args.catalog_dir))
+        expected_kfs = args.expected_count if args.expected_count is not None else 177321
+        expected_vids = args.expected_video_count if args.expected_video_count is not None else 873
+        validator = BtcValidator(
+            video_registry=video_registry,
+            expected_video_count=expected_vids,
+            expected_keyframe_count=expected_kfs,
+        )
+        result = validator.validate(
+            btc_keyframes=list(registry._keyframes_by_uid.values()),
+            clip_rowmaps=list(registry._clip_by_kf_uid.values()),
+            object_detections=[d for d_list in registry._objects_by_kf_uid.values() for d in d_list],
+            object_coverage=list(registry._obj_cov_by_kf_uid.values()),
+            media_info=list(registry._media_by_video_id.values()),
+        )
+        _json_print(result.to_dict())
+        return 0 if result.is_valid else 3
+    except Exception as exc:
+        _json_print({"is_valid": False, "errors": [str(exc)]})
+        return 3
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aic", description="AIC 2026 reliability/control-plane CLI")
     sub = parser.add_subparsers(dest="command", required=True)
+
+    p = sub.add_parser("build-btc-catalog", help="xây dựng canonical BTC keyframes, CLIP rowmap, objects, media-info")
+    p.add_argument("--map-keyframes", required=True, help="thư mục chứa 873 map CSVs")
+    p.add_argument("--clip-features", required=True, help="thư mục chứa 873 clip feature npy files")
+    p.add_argument("--objects-zip", required=True, help="đường dẫn objects-aic25-b1.zip")
+    p.add_argument("--media-info-zip", required=True, help="đường dẫn media-info-aic25-b1.zip")
+    p.add_argument("--video-catalog", required=True, help="thư mục canonical video catalog (M1A)")
+    p.add_argument("--faiss-dir", help="thư mục chứa clip-faiss-btc-v1")
+    p.add_argument("--out", required=True, help="thư mục output")
+    p.set_defaults(func=cmd_build_btc_catalog)
+
+    p = sub.add_parser("validate-btc-catalog", help="xác thực fail-closed cho canonical BTC catalog")
+    p.add_argument("--catalog-dir", required=True, help="thư mục chứa btc_keyframes.jsonl, v.v.")
+    p.add_argument("--video-catalog", help="thư mục video catalog")
+    p.add_argument("--expected-count", type=int, default=177321)
+    p.add_argument("--expected-video-count", type=int, default=873)
+    p.set_defaults(func=cmd_validate_btc_catalog)
 
     p = sub.add_parser("build-video-catalog", help="xây dựng canonical videos.jsonl và video_space metadata")
     p.add_argument("--input", required=True, help="đường dẫn file JSON/JSONL chứa metadata video gốc (ví dụ asr_videos.jsonl)")
