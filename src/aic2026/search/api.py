@@ -28,6 +28,8 @@ from aic2026.retrieval.providers import (
     OcrBm25Provider,
     OcrTrigramProvider,
     QwenStructuredProvider,
+    QwenBm25Provider,
+    QwenBgeProvider,
     SigLIPProvider,
     VisualProvider,
 )
@@ -58,6 +60,8 @@ class AsrSearchApi:
         ocr_bge_provider: OcrBgeProvider | None = None,
         media_bm25_provider: MediaBm25Provider | None = None,
         qwen_structured_provider: QwenStructuredProvider | None = None,
+        qwen_bm25_provider: QwenBm25Provider | None = None,
+        qwen_bge_provider: QwenBgeProvider | None = None,
     ) -> None:
         self.database = Path(database)
         self.capability_service = capability_service or CapabilityService(
@@ -74,7 +78,10 @@ class AsrSearchApi:
         self.ocr_bge_provider = ocr_bge_provider
         self.media_bm25_provider = media_bm25_provider
         self.qwen_structured_provider = qwen_structured_provider
+        self.qwen_bm25_provider = qwen_bm25_provider
+        self.qwen_bge_provider = qwen_bge_provider
         self.workspace = WorkspaceStore(self.database)
+
 
 
 
@@ -521,6 +528,110 @@ class AsrSearchApi:
             "hits": [h.to_dict() for h in hits],
         }
 
+    def qwen_bm25_health(self) -> tuple[int, dict[str, Any]]:
+        if self.qwen_bm25_provider is None:
+            default_db = Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+            if default_db.exists():
+                self.qwen_bm25_provider = QwenBm25Provider(default_db)
+            else:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {
+                    "lane_id": "qwen_bm25",
+                    "status": "UNAVAILABLE",
+                    "error": "Runtime mapping database not found",
+                }
+        h = self.qwen_bm25_provider.health()
+        status_code = HTTPStatus.OK if h.get("status") == "OK" else HTTPStatus.SERVICE_UNAVAILABLE
+        return status_code, h
+
+    def qwen_bm25_search(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        if self.qwen_bm25_provider is None:
+            status_code, _ = self.qwen_bm25_health()
+            if status_code != HTTPStatus.OK:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {"status": "ERROR", "error": "Qwen BM25 lane unavailable"}
+        assert self.qwen_bm25_provider is not None
+
+        query_text = request.get("query") or request.get("q")
+        if not query_text or not str(query_text).strip():
+            return HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": "query parameter is required"}
+
+        top_k = int(request.get("top_k", 50))
+        video_ids = tuple(request.get("candidate_video_ids") or request.get("video_ids") or ())
+
+        t0 = time.perf_counter()
+        hits = self.qwen_bm25_provider.search(
+            query=query_text,
+            top_k=top_k,
+            candidate_video_ids=video_ids if video_ids else None,
+            query_id=request.get("query_id"),
+        )
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        return HTTPStatus.OK, {
+            "status": "OK",
+            "lane": "qwen_bm25",
+            "entity_type": "FRAME",
+            "frame_space": "CUSTOM",
+            "query": query_text,
+            "query_id": request.get("query_id"),
+            "top_k": top_k,
+            "count": len(hits),
+            "elapsed_ms": round(elapsed_ms, 2),
+            "hits": [h.to_dict() for h in hits],
+        }
+
+    def qwen_bge_health(self) -> tuple[int, dict[str, Any]]:
+        if self.qwen_bge_provider is None:
+            default_artifact_dir = Path(r"F:\AIC_WORK\artifacts\retrieval_v2\qwen_bge_v1")
+            if (default_artifact_dir / "qwen_bge.faiss").exists():
+                self.qwen_bge_provider = QwenBgeProvider(default_artifact_dir)
+            else:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {
+                    "lane_id": "qwen_bge",
+                    "status": "UNAVAILABLE",
+                    "error": "Qwen BGE artifact directory not found",
+                }
+        h = self.qwen_bge_provider.health()
+        status_code = HTTPStatus.OK if h.get("status") == "OK" else HTTPStatus.SERVICE_UNAVAILABLE
+        return status_code, h
+
+    def qwen_bge_search(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        if self.qwen_bge_provider is None:
+            status_code, _ = self.qwen_bge_health()
+            if status_code != HTTPStatus.OK:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {"status": "ERROR", "error": "Qwen BGE lane unavailable"}
+        assert self.qwen_bge_provider is not None
+
+        query_text = request.get("query") or request.get("q")
+        if not query_text or not str(query_text).strip():
+            return HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": "query parameter is required"}
+
+        top_k = int(request.get("top_k", 50))
+        video_ids = tuple(request.get("candidate_video_ids") or request.get("video_ids") or ())
+
+        t0 = time.perf_counter()
+        hits = self.qwen_bge_provider.search(
+            query=query_text,
+            top_k=top_k,
+            candidate_video_ids=video_ids if video_ids else None,
+            query_id=request.get("query_id"),
+        )
+
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        return HTTPStatus.OK, {
+            "status": "OK",
+            "lane": "qwen_bge",
+            "entity_type": "FRAME",
+            "frame_space": "CUSTOM",
+            "query": query_text,
+            "query_id": request.get("query_id"),
+            "top_k": top_k,
+            "count": len(hits),
+            "elapsed_ms": round(elapsed_ms, 2),
+            "hits": [h.to_dict() for h in hits],
+        }
+
+
 
     def health(self) -> tuple[int, dict[str, Any]]:
         if not self.database.is_file():
@@ -645,6 +756,10 @@ def make_handler(
                     status, payload = application.media_bm25_health()
                 elif parsed.path in {"/api/v1/lanes/qwen-structured/health", "/api/v1/lanes/qwen_structured/health"}:
                     status, payload = application.qwen_structured_health()
+                elif parsed.path in {"/api/v1/lanes/qwen-bm25/health", "/api/v1/lanes/qwen_bm25/health"}:
+                    status, payload = application.qwen_bm25_health()
+                elif parsed.path in {"/api/v1/lanes/qwen-bge/health", "/api/v1/lanes/qwen_bge/health"}:
+                    status, payload = application.qwen_bge_health()
                 elif parsed.path == "/api/asr/search":
                     status, payload = application.search(parse_qs(parsed.query, keep_blank_values=True))
                 else:
@@ -679,6 +794,10 @@ def make_handler(
                 "/api/v1/lanes/media_bm25/search",
                 "/api/v1/lanes/qwen-structured/search",
                 "/api/v1/lanes/qwen_structured/search",
+                "/api/v1/lanes/qwen-bm25/search",
+                "/api/v1/lanes/qwen_bm25/search",
+                "/api/v1/lanes/qwen-bge/search",
+                "/api/v1/lanes/qwen_bge/search",
             }
             if (
                 parsed.path not in valid_post_paths
@@ -711,6 +830,11 @@ def make_handler(
                     status, payload = application.media_bm25_search(request)
                 elif parsed.path in {"/api/v1/lanes/qwen-structured/search", "/api/v1/lanes/qwen_structured/search"}:
                     status, payload = application.qwen_structured_search(request)
+                elif parsed.path in {"/api/v1/lanes/qwen-bm25/search", "/api/v1/lanes/qwen_bm25/search"}:
+                    status, payload = application.qwen_bm25_search(request)
+                elif parsed.path in {"/api/v1/lanes/qwen-bge/search", "/api/v1/lanes/qwen_bge/search"}:
+                    status, payload = application.qwen_bge_search(request)
+
                 else:
                     entry_id = parsed.path.rsplit("/", 1)[-1] if parsed.path != "/api/v1/workspace" else None
                     status, payload = HTTPStatus.OK, application.workspace.save(request, entry_id=entry_id)

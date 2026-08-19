@@ -279,7 +279,7 @@ class OcrBgeIndex:
         if self._model is None or self._tokenizer is None:
             from transformers import AutoModel, AutoTokenizer
             self._tokenizer = AutoTokenizer.from_pretrained(BGE_MODEL_ID)
-            self._model = AutoModel.from_pretrained(BGE_MODEL_ID)
+            self._model = AutoModel.from_pretrained(BGE_MODEL_ID, use_safetensors=True)
             self._model.eval()
 
     def health(self) -> dict[str, Any]:

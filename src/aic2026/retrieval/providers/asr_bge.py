@@ -76,12 +76,13 @@ class AsrBgeProvider:
 
         try:
             tokenizer = AutoTokenizer.from_pretrained(self.model_id)
-            model = AutoModel.from_pretrained(self.model_id)
+            model = AutoModel.from_pretrained(self.model_id, use_safetensors=True)
             model.eval()
             if device != "cpu":
                 model.to(device)
             return model, tokenizer
         except Exception as exc:
+
             raise ProviderUnavailableError(f"Failed to load BGE-M3 model ({self.model_id}): {exc}") from exc
 
     def _ensure_loaded(self) -> None:

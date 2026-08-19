@@ -1621,6 +1621,147 @@ def cmd_search_qwen_structured(args: argparse.Namespace) -> int:
         return 2
 
 
+def cmd_qwen_bm25_health(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.providers.qwen_bm25 import QwenBm25Provider
+
+        db_path = Path(args.db) if args.db else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+        provider = QwenBm25Provider(db_path)
+        h = provider.health()
+        _json_print(h)
+        return 0 if h.get("status") == "OK" else 1
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+def cmd_search_qwen_bm25(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.providers.qwen_bm25 import QwenBm25Provider
+
+        db_path = Path(args.db) if args.db else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+        provider = QwenBm25Provider(db_path)
+
+        video_ids = ()
+        if getattr(args, "video_id", None):
+            video_ids = (args.video_id,)
+        elif getattr(args, "video_ids_file", None):
+            with open(args.video_ids_file, "r", encoding="utf-8") as f:
+                video_ids = tuple(line.strip() for line in f if line.strip())
+
+        query = ProviderQuery(query_text=args.query, top_k=args.top_k, video_ids=video_ids)
+        t0 = time.perf_counter()
+        hits = provider.search(query)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        if args.json:
+            _json_print({
+                "status": "OK",
+                "lane": "qwen_bm25",
+                "entity_type": "FRAME",
+                "frame_space": "CUSTOM",
+                "query": args.query,
+                "top_k": args.top_k,
+                "count": len(hits),
+                "elapsed_ms": round(elapsed_ms, 2),
+                "hits": [h.to_dict() for h in hits],
+            })
+        else:
+            print(f"Qwen BM25 Search: '{args.query}' (took {elapsed_ms:.1f}ms, {len(hits)} hits)")
+            print(f"{'Rank':<5} {'Score':<8} {'Video ID':<12} {'Keyframe UID':<28} {'Time (s)':<10} {'Caption':<40}")
+            print("-" * 115)
+            for h in hits:
+                time_str = f"{h.start_sec:.2f}"
+                cap_snippet = (h.payload.get("caption") or "")[:38]
+                print(f"{h.rank:<5} {h.raw_score:<8.4f} {h.video_id:<12} {h.payload.get('keyframe_uid', ''):<28} {time_str:<10} {cap_snippet:<40}")
+        return 0
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+def cmd_build_qwen_bge(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.qwen_bge_index import build_qwen_bge_index
+
+        db_path = Path(args.db) if args.db else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+        out_dir = Path(args.out_dir) if getattr(args, "out_dir", None) else (Path(args.out) if getattr(args, "out", None) else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\qwen_bge_v1"))
+
+        passport = build_qwen_bge_index(
+            db_path=db_path,
+            output_dir=out_dir,
+            num_shards=args.shards,
+            batch_size=getattr(args, "batch_size", 64),
+            device=getattr(args, "device", "cuda"),
+        )
+        _json_print(passport)
+        return 0
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+
+def cmd_qwen_bge_health(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.providers.qwen_bge import QwenBgeProvider
+
+        artifact_dir = Path(args.artifact_dir) if args.artifact_dir else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\qwen_bge_v1")
+        provider = QwenBgeProvider(artifact_dir, device=args.device)
+        h = provider.health()
+        _json_print(h)
+        return 0 if h.get("status") == "OK" else 1
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+def cmd_search_qwen_bge(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.providers.qwen_bge import QwenBgeProvider
+
+        artifact_dir = Path(args.artifact_dir) if args.artifact_dir else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\qwen_bge_v1")
+        provider = QwenBgeProvider(artifact_dir, device=args.device)
+
+        video_ids = ()
+        if getattr(args, "video_id", None):
+            video_ids = (args.video_id,)
+        elif getattr(args, "video_ids_file", None):
+            with open(args.video_ids_file, "r", encoding="utf-8") as f:
+                video_ids = tuple(line.strip() for line in f if line.strip())
+
+        query = ProviderQuery(query_text=args.query, top_k=args.top_k, video_ids=video_ids)
+        t0 = time.perf_counter()
+        hits = provider.search(query)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        if args.json:
+            _json_print({
+                "status": "OK",
+                "lane": "qwen_bge",
+                "entity_type": "FRAME",
+                "frame_space": "CUSTOM",
+                "query": args.query,
+                "top_k": args.top_k,
+                "count": len(hits),
+                "elapsed_ms": round(elapsed_ms, 2),
+                "hits": [h.to_dict() for h in hits],
+            })
+        else:
+            print(f"Qwen BGE Search: '{args.query}' (took {elapsed_ms:.1f}ms, {len(hits)} hits)")
+            print(f"{'Rank':<5} {'Score':<8} {'Video ID':<12} {'Keyframe UID':<28} {'Time (s)':<10} {'Caption':<40}")
+            print("-" * 115)
+            for h in hits:
+                time_str = f"{h.start_sec:.2f}"
+                cap_snippet = (h.payload.get("caption") or "")[:38]
+                print(f"{h.rank:<5} {h.raw_score:<8.4f} {h.video_id:<12} {h.payload.get('keyframe_uid', ''):<28} {time_str:<10} {cap_snippet:<40}")
+        return 0
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -2090,7 +2231,46 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--json", action="store_true", help="output json format")
     p.set_defaults(func=cmd_search_qwen_structured)
 
+    # --- Qwen Text Retrieval Lanes (M5B) ---
+    p = sub.add_parser("search-qwen-bm25", help="truy vấn Qwen caption lexical bằng SQLite FTS5 / BM25 (FRAME evidence)")
+    p.add_argument("query", help="nội dung text query")
+    p.add_argument("--db", help="đường dẫn mapping.sqlite")
+    p.add_argument("--top-k", type=int, default=20)
+    p.add_argument("--video-id", help="scope tìm kiếm trong 1 video cụ thể")
+    p.add_argument("--video-ids-file", help="scope tìm kiếm trong danh sách video (mỗi dòng 1 video_id)")
+    p.add_argument("--json", action="store_true", help="output json format")
+    p.set_defaults(func=cmd_search_qwen_bm25)
+
+    p = sub.add_parser("qwen-bm25-health", help="kiểm tra trạng thái FTS5 và canonical Qwen captions của Qwen BM25 lane")
+    p.add_argument("--db", help="đường dẫn mapping.sqlite")
+    p.set_defaults(func=cmd_qwen_bm25_health)
+
+    p = sub.add_parser("build-qwen-bge", help="xây dựng FAISS IndexFlatIP từ eligible Qwen semantic core documents bằng BAAI/bge-m3 trên GPU CUDA")
+    p.add_argument("--db", help="đường dẫn mapping.sqlite")
+    p.add_argument("--out-dir", help="output directory cho FAISS index và rowmap")
+    p.add_argument("--out", help="alias cho --out-dir")
+    p.add_argument("--shards", type=int, default=20, help="số lượng shard (default: 20)")
+    p.add_argument("--batch-size", type=int, default=64, help="batch size encode (default: 64)")
+    p.add_argument("--device", choices=("cuda", "cpu"), default="cuda", help="thiết bị chạy model (GPU CUDA bắt buộc cho corpus build)")
+    p.set_defaults(func=cmd_build_qwen_bge)
+
+    p = sub.add_parser("search-qwen-bge", help="truy vấn Qwen semantic core documents bằng BAAI/bge-m3 qua FAISS IndexFlatIP")
+    p.add_argument("query", help="nội dung text query")
+    p.add_argument("--artifact-dir", help="directory chứa qwen_bge.faiss và rowmap")
+    p.add_argument("--top-k", type=int, default=20)
+    p.add_argument("--video-id", help="scope tìm kiếm trong 1 video cụ thể")
+    p.add_argument("--video-ids-file", help="scope tìm kiếm trong danh sách video (mỗi dòng 1 video_id)")
+    p.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    p.add_argument("--json", action="store_true", help="output json format")
+    p.set_defaults(func=cmd_search_qwen_bge)
+
+    p = sub.add_parser("qwen-bge-health", help="kiểm tra trạng thái index và model của Qwen BGE lane")
+    p.add_argument("--artifact-dir", help="directory chứa qwen_bge.faiss và rowmap")
+    p.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    p.set_defaults(func=cmd_qwen_bge_health)
+
     return parser
+
 
 
 

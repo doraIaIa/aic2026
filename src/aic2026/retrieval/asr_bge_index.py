@@ -131,7 +131,7 @@ def _process_single_shard(
 
     t0 = time.perf_counter()
     tokenizer = AutoTokenizer.from_pretrained(BGE_MODEL_ID)
-    model = AutoModel.from_pretrained(BGE_MODEL_ID)
+    model = AutoModel.from_pretrained(BGE_MODEL_ID, use_safetensors=True)
     model.eval()
 
     shard_entries: list[AsrBgeRowmapEntry] = []
