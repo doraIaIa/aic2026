@@ -17,6 +17,7 @@ from aic2026.retrieval.providers.btc_clip import BtcClipProvider
 from aic2026.retrieval.providers.ocr_bm25 import OcrBm25Provider
 from aic2026.retrieval.providers.ocr_trigram import OcrTrigramProvider
 from aic2026.retrieval.providers.ocr_bge import OcrBgeProvider
+from aic2026.retrieval.providers.qwen_structured import QwenStructuredProvider
 
 __all__ = [
     "AsrProvider",
@@ -36,6 +37,8 @@ __all__ = [
     "ObjectProvider",
     "SigLIPProvider",
     "BtcClipProvider",
+    "QwenStructuredProvider",
 ]
+
 
 

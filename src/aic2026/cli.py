@@ -1522,6 +1522,106 @@ def cmd_media_bm25_health(args: argparse.Namespace) -> int:
         return 2
 
 
+def cmd_build_qwen_structured_index(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.qwen_structured_index import build_qwen_structured_index
+
+        runtime_db = Path(args.db) if args.db else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+        out_dir = Path(args.out) if args.out else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\qwen_structured_v1")
+
+        passport = build_qwen_structured_index(runtime_db, out_dir)
+        _json_print(passport)
+        return 0
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+def cmd_qwen_structured_health(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.providers.qwen_structured import QwenStructuredProvider
+
+        db_path = Path(args.db) if getattr(args, "db", None) else (
+            Path(args.artifact_dir) / "qwen_facets.sqlite" if getattr(args, "artifact_dir", None)
+            else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\qwen_structured_v1\qwen_facets.sqlite")
+        )
+        provider = QwenStructuredProvider(db_path)
+        h = provider.health()
+        _json_print(h)
+        return 0 if h.get("status") == "OK" else 1
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+def cmd_search_qwen_structured(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.providers.qwen_structured import QwenStructuredProvider, QwenStructuredQuery
+
+        db_path = Path(args.db) if getattr(args, "db", None) else (
+            Path(args.artifact_dir) / "qwen_facets.sqlite" if getattr(args, "artifact_dir", None)
+            else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\qwen_structured_v1\qwen_facets.sqlite")
+        )
+        provider = QwenStructuredProvider(db_path)
+
+        video_ids = []
+        if getattr(args, "video_id", None):
+            video_ids = [args.video_id]
+        elif getattr(args, "video_ids_file", None):
+            with open(args.video_ids_file, "r", encoding="utf-8") as f:
+                video_ids = [line.strip() for line in f if line.strip()]
+
+        objects = [args.object] if getattr(args, "object", None) else []
+        actions = [args.action] if getattr(args, "action", None) else []
+        scenes = [args.scene] if getattr(args, "scene", None) else []
+        attributes = [args.attribute] if getattr(args, "attribute", None) else []
+        relations = [args.relation] if getattr(args, "relation", None) else []
+        counts = [args.count] if getattr(args, "count", None) else []
+
+        q_obj = QwenStructuredQuery(
+            query_text=getattr(args, "query", None),
+            objects=objects,
+            actions=actions,
+            scenes=scenes,
+            attributes=attributes,
+            relations=relations,
+            counts=counts,
+            candidate_video_ids=video_ids if video_ids else None,
+            top_k=args.top_k,
+        )
+
+        t0 = time.perf_counter()
+        hits = provider.search(q_obj)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        if args.json:
+            _json_print({
+                "status": "OK",
+                "lane": "qwen_structured",
+                "entity_type": "FRAME",
+                "frame_space": "CUSTOM",
+                "query": args.query,
+                "top_k": args.top_k,
+                "count": len(hits),
+                "elapsed_ms": round(elapsed_ms, 2),
+                "hits": [h.to_dict() for h in hits],
+            })
+        else:
+            query_display = args.query or f"obj={objects}, act={actions}, scn={scenes}"
+            print(f"Qwen Structured Search: '{query_display}' (took {elapsed_ms:.1f}ms, {len(hits)} hits)")
+            print(f"{'Rank':<5} {'Score':<8} {'Video ID':<12} {'Keyframe UID':<28} {'Time (s)':<10} {'Matched Facets':<40}")
+            print("-" * 115)
+            for h in hits:
+                time_str = f"{h.start_sec:.2f}"
+                facets_str = ", ".join(f["facet_id"] for f in h.payload.get("matched_facets", []))[:38]
+                print(f"{h.rank:<5} {h.raw_score:<8.4f} {h.video_id:<12} {h.payload.get('keyframe_uid', ''):<28} {time_str:<10} {facets_str:<40}")
+        return 0
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aic", description="AIC 2026 reliability/control-plane CLI")
@@ -1963,7 +2063,35 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--db", help="đường dẫn mapping.sqlite")
     p.set_defaults(func=cmd_media_bm25_health)
 
+    # --- Qwen Structured Facet Retrieval Lanes (M5A) ---
+    p = sub.add_parser("build-qwen-structured-index", help="xây dựng SQLite Postings & Dictionary index từ 116,767 Qwen observations")
+    p.add_argument("--db", help="đường dẫn mapping.sqlite")
+    p.add_argument("--out", help="output directory cho qwen_facets.sqlite")
+    p.set_defaults(func=cmd_build_qwen_structured_index)
+
+    p = sub.add_parser("qwen-structured-health", help="kiểm tra trạng thái index và facet counts của Qwen Structured lane")
+    p.add_argument("--artifact-dir", help="directory chứa qwen_facets.sqlite")
+    p.add_argument("--db", help="đường dẫn trực tiếp tới qwen_facets.sqlite")
+    p.set_defaults(func=cmd_qwen_structured_health)
+
+    p = sub.add_parser("search-qwen-structured", help="truy vấn Qwen structured facets (explicit hoặc plain text lexical discovery)")
+    p.add_argument("query", nargs="?", default="", help="nội dung text query tự do")
+    p.add_argument("--artifact-dir", help="directory chứa qwen_facets.sqlite")
+    p.add_argument("--db", help="đường dẫn trực tiếp tới qwen_facets.sqlite")
+    p.add_argument("--object", help="lọc facet object")
+    p.add_argument("--action", help="lọc facet action")
+    p.add_argument("--scene", help="lọc facet scene")
+    p.add_argument("--attribute", help="lọc facet attribute")
+    p.add_argument("--relation", help="lọc facet relation")
+    p.add_argument("--count", help="lọc facet count")
+    p.add_argument("--top-k", type=int, default=20)
+    p.add_argument("--video-id", help="scope tìm kiếm trong 1 video cụ thể")
+    p.add_argument("--video-ids-file", help="scope tìm kiếm trong danh sách video (mỗi dòng 1 video_id)")
+    p.add_argument("--json", action="store_true", help="output json format")
+    p.set_defaults(func=cmd_search_qwen_structured)
+
     return parser
+
 
 
 

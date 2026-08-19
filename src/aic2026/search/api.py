@@ -27,6 +27,7 @@ from aic2026.retrieval.providers import (
     OcrBgeProvider,
     OcrBm25Provider,
     OcrTrigramProvider,
+    QwenStructuredProvider,
     SigLIPProvider,
     VisualProvider,
 )
@@ -56,6 +57,7 @@ class AsrSearchApi:
         ocr_trigram_provider: OcrTrigramProvider | None = None,
         ocr_bge_provider: OcrBgeProvider | None = None,
         media_bm25_provider: MediaBm25Provider | None = None,
+        qwen_structured_provider: QwenStructuredProvider | None = None,
     ) -> None:
         self.database = Path(database)
         self.capability_service = capability_service or CapabilityService(
@@ -71,7 +73,9 @@ class AsrSearchApi:
         self.ocr_trigram_provider = ocr_trigram_provider
         self.ocr_bge_provider = ocr_bge_provider
         self.media_bm25_provider = media_bm25_provider
+        self.qwen_structured_provider = qwen_structured_provider
         self.workspace = WorkspaceStore(self.database)
+
 
 
     def siglip_health(self) -> tuple[int, dict[str, Any]]:
@@ -450,6 +454,74 @@ class AsrSearchApi:
             "hits": [h.to_dict() for h in hits],
         }
 
+    def qwen_structured_health(self) -> tuple[int, dict[str, Any]]:
+        if self.qwen_structured_provider is None:
+            default_db = Path(r"F:\AIC_WORK\artifacts\retrieval_v2\qwen_structured_v1\qwen_facets.sqlite")
+            if default_db.exists():
+                self.qwen_structured_provider = QwenStructuredProvider(default_db)
+            else:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {
+                    "lane_id": "qwen_structured",
+                    "status": "UNAVAILABLE",
+                    "error": "Qwen structured database not found",
+                }
+        h = self.qwen_structured_provider.health()
+        status_code = HTTPStatus.OK if h.get("status") == "OK" else HTTPStatus.SERVICE_UNAVAILABLE
+        return status_code, h
+
+    def qwen_structured_search(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        if self.qwen_structured_provider is None:
+            status_code, _ = self.qwen_structured_health()
+            if status_code != HTTPStatus.OK:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {"status": "ERROR", "error": "Qwen structured lane unavailable"}
+        assert self.qwen_structured_provider is not None
+
+        query_text = request.get("query") or request.get("q") or None
+        objects = request.get("objects") or ([request["object"]] if "object" in request else [])
+        attributes = request.get("attributes") or ([request["attribute"]] if "attribute" in request else [])
+        relations = request.get("relations") or ([request["relation"]] if "relation" in request else [])
+        counts = request.get("counts") or ([request["count"]] if "count" in request else [])
+        scenes = request.get("scenes") or ([request["scene"]] if "scene" in request else [])
+        actions = request.get("actions") or ([request["action"]] if "action" in request else [])
+        facets = request.get("facets") or []
+
+        has_explicit = bool(objects or attributes or relations or counts or scenes or actions or facets)
+        if not query_text and not has_explicit:
+            return HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": "At least query or one explicit facet is required"}
+
+        top_k = int(request.get("top_k", 50))
+        video_ids = tuple(request.get("candidate_video_ids") or request.get("video_ids") or ())
+
+        t0 = time.perf_counter()
+        hits = self.qwen_structured_provider.search(
+            query=query_text or "",
+            top_k=top_k,
+            candidate_video_ids=video_ids,
+            objects=objects,
+            attributes=attributes,
+            relations=relations,
+            counts=counts,
+            scenes=scenes,
+            actions=actions,
+            facets=facets,
+            query_id=request.get("query_id"),
+        )
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        return HTTPStatus.OK, {
+            "status": "OK",
+            "lane": "qwen_structured",
+            "entity_type": "FRAME",
+            "frame_space": "CUSTOM",
+            "query": query_text,
+            "query_id": request.get("query_id"),
+            "top_k": top_k,
+            "count": len(hits),
+            "elapsed_ms": round(elapsed_ms, 2),
+            "hits": [h.to_dict() for h in hits],
+        }
+
+
     def health(self) -> tuple[int, dict[str, Any]]:
         if not self.database.is_file():
             return HTTPStatus.SERVICE_UNAVAILABLE, {
@@ -571,6 +643,8 @@ def make_handler(
                     status, payload = application.ocr_bge_health()
                 elif parsed.path in {"/api/v1/lanes/media-bm25/health", "/api/v1/lanes/media_bm25/health"}:
                     status, payload = application.media_bm25_health()
+                elif parsed.path in {"/api/v1/lanes/qwen-structured/health", "/api/v1/lanes/qwen_structured/health"}:
+                    status, payload = application.qwen_structured_health()
                 elif parsed.path == "/api/asr/search":
                     status, payload = application.search(parse_qs(parsed.query, keep_blank_values=True))
                 else:
@@ -603,6 +677,8 @@ def make_handler(
                 "/api/v1/lanes/ocr_bge/search",
                 "/api/v1/lanes/media-bm25/search",
                 "/api/v1/lanes/media_bm25/search",
+                "/api/v1/lanes/qwen-structured/search",
+                "/api/v1/lanes/qwen_structured/search",
             }
             if (
                 parsed.path not in valid_post_paths
@@ -633,6 +709,8 @@ def make_handler(
                     status, payload = application.ocr_bge_search(request)
                 elif parsed.path in {"/api/v1/lanes/media-bm25/search", "/api/v1/lanes/media_bm25/search"}:
                     status, payload = application.media_bm25_search(request)
+                elif parsed.path in {"/api/v1/lanes/qwen-structured/search", "/api/v1/lanes/qwen_structured/search"}:
+                    status, payload = application.qwen_structured_search(request)
                 else:
                     entry_id = parsed.path.rsplit("/", 1)[-1] if parsed.path != "/api/v1/workspace" else None
                     status, payload = HTTPStatus.OK, application.workspace.save(request, entry_id=entry_id)
