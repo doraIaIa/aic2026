@@ -255,6 +255,299 @@ class RuntimeDataHub:
         return d
 
     # ------------------------------------------------------------------
+    # Cross-Space Timeline & Nearest Keyframe Services (M1F)
+    # ------------------------------------------------------------------
+
+    def nearest_keyframe(
+        self,
+        video_id: str,
+        timestamp_ms: int,
+        frame_space: str = "BTC",
+    ) -> Dict[str, Any]:
+        """Find the nearest keyframe in requested frame_space using deterministic tie-breaking.
+
+        Tie-breaking rules:
+        1. Smallest abs_delta_ms
+        2. Earliest timestamp_ms
+        3. Alphabetically smallest keyframe_uid
+        """
+        space = frame_space.upper()
+        if space not in ("BTC", "CUSTOM"):
+            raise ValueError(f"Invalid frame_space '{frame_space}'. Must be 'BTC' or 'CUSTOM'.")
+
+        v = self.get_video(video_id)
+        if not v:
+            raise ValueError(f"Unknown video_id '{video_id}'")
+
+        table = "btc_keyframes" if space == "BTC" else "custom_keyframes"
+        c = self._conn.cursor()
+
+        # Predecessor (largest timestamp <= timestamp_ms)
+        c.execute(
+            f"""
+            SELECT keyframe_uid, timestamp_ms, frame_idx, image_relpath
+            FROM {table}
+            WHERE video_id = ? AND timestamp_ms <= ?
+            ORDER BY timestamp_ms DESC, keyframe_uid ASC
+            LIMIT 1
+            """,
+            (video_id, timestamp_ms),
+        )
+        pred = c.fetchone()
+
+        # Successor (smallest timestamp >= timestamp_ms)
+        c.execute(
+            f"""
+            SELECT keyframe_uid, timestamp_ms, frame_idx, image_relpath
+            FROM {table}
+            WHERE video_id = ? AND timestamp_ms >= ?
+            ORDER BY timestamp_ms ASC, keyframe_uid ASC
+            LIMIT 1
+            """,
+            (video_id, timestamp_ms),
+        )
+        succ = c.fetchone()
+
+        if not pred and not succ:
+            return {
+                "status": "NO_KEYFRAME_IN_SPACE",
+                "requested_video_id": video_id,
+                "requested_timestamp_ms": timestamp_ms,
+                "frame_space": space,
+                "keyframe_uid": None,
+                "matched_timestamp_ms": None,
+                "delta_ms": None,
+                "abs_delta_ms": None,
+                "frame_idx": None,
+                "image_relpath": None,
+                "relation_type": "DERIVED_ASSOCIATION",
+            }
+
+        candidates = []
+        if pred:
+            candidates.append(dict(pred))
+        if succ and (not pred or succ["keyframe_uid"] != pred["keyframe_uid"]):
+            candidates.append(dict(succ))
+
+        best = min(
+            candidates,
+            key=lambda row: (
+                abs(row["timestamp_ms"] - timestamp_ms),
+                row["timestamp_ms"],
+                row["keyframe_uid"],
+            ),
+        )
+
+        matched_ts = best["timestamp_ms"]
+        delta_ms = matched_ts - timestamp_ms
+        abs_delta_ms = abs(delta_ms)
+
+        return {
+            "status": "MATCHED",
+            "requested_video_id": video_id,
+            "requested_timestamp_ms": timestamp_ms,
+            "frame_space": space,
+            "keyframe_uid": best["keyframe_uid"],
+            "matched_timestamp_ms": matched_ts,
+            "delta_ms": delta_ms,
+            "abs_delta_ms": abs_delta_ms,
+            "frame_idx": best["frame_idx"],
+            "image_relpath": best["image_relpath"],
+            "relation_type": "DERIVED_ASSOCIATION",
+        }
+
+    def compare_keyframe_spaces(self, video_id: str, timestamp_ms: int) -> Dict[str, Any]:
+        """Return independent nearest BTC and CUSTOM keyframes for a requested time."""
+        btc_res = self.nearest_keyframe(video_id, timestamp_ms, "BTC")
+        custom_res = self.nearest_keyframe(video_id, timestamp_ms, "CUSTOM")
+        return {
+            "video_id": video_id,
+            "requested_timestamp_ms": timestamp_ms,
+            "btc": btc_res,
+            "custom": custom_res,
+        }
+
+    def nearest_other_space(self, keyframe_uid: str) -> Dict[str, Any]:
+        """Query the opposite frame space from a given keyframe UID."""
+        is_btc = keyframe_uid.startswith("BTC:")
+        kf = self.get_keyframe(keyframe_uid)
+        if not kf:
+            raise ValueError(f"Unknown keyframe_uid '{keyframe_uid}'")
+        target_space = "CUSTOM" if is_btc else "BTC"
+        return self.nearest_keyframe(kf["video_id"], kf["timestamp_ms"], target_space)
+
+    # ------------------------------------------------------------------
+    # Rich Multimodal Drilldown Services (M1F)
+    # ------------------------------------------------------------------
+
+    def get_video_drilldown(self, video_id: str) -> Dict[str, Any]:
+        """Compact structured summary for a canonical video traversing all Data Hub spaces."""
+        v = self.get_video(video_id)
+        if not v:
+            raise ValueError(f"Unknown video_id '{video_id}'")
+
+        c = self._conn.cursor()
+        media = self.get_media_info(video_id)
+        memberships = self.get_memberships(video_id)
+
+        # ASR stats
+        c.execute("SELECT * FROM asr_video_coverage WHERE video_id = ?", (video_id,))
+        asr_cov = c.fetchone()
+        c.execute(
+            """
+            SELECT COUNT(*), MIN(start_ms), MAX(end_ms)
+            FROM canonical_asr_segments WHERE video_id = ?
+            """,
+            (video_id,),
+        )
+        asr_stats = c.fetchone()
+        asr_dict = {
+            "status": asr_cov["asr_status"] if asr_cov else "UNKNOWN",
+            "coverage_segment_count": asr_cov["segment_count"] if asr_cov else 0,
+            "actual_segment_count": asr_stats[0],
+            "first_start_ms": asr_stats[1],
+            "last_end_ms": asr_stats[2],
+        }
+
+        # BTC stats
+        c.execute(
+            """
+            SELECT COUNT(*), MIN(timestamp_ms), MAX(timestamp_ms)
+            FROM btc_keyframes WHERE video_id = ?
+            """,
+            (video_id,),
+        )
+        btc_stats = c.fetchone()
+        c.execute("SELECT COUNT(*) FROM btc_clip_rows WHERE video_id = ?", (video_id,))
+        btc_clip_count = c.fetchone()[0]
+        c.execute("SELECT COUNT(*) FROM btc_object_coverage WHERE video_id = ?", (video_id,))
+        btc_obj_cov_count = c.fetchone()[0]
+        btc_dict = {
+            "keyframe_count": btc_stats[0],
+            "first_timestamp_ms": btc_stats[1],
+            "last_timestamp_ms": btc_stats[2],
+            "clip_row_count": btc_clip_count,
+            "object_coverage_count": btc_obj_cov_count,
+        }
+
+        # CUSTOM stats
+        c.execute(
+            """
+            SELECT COUNT(*), MIN(timestamp_ms), MAX(timestamp_ms)
+            FROM custom_keyframes WHERE video_id = ?
+            """,
+            (video_id,),
+        )
+        custom_stats = c.fetchone()
+        c.execute("SELECT COUNT(*) FROM qwen_frames WHERE video_id = ?", (video_id,))
+        qwen_count = c.fetchone()[0]
+        c.execute("SELECT COUNT(*) FROM ocr_keyframes WHERE video_id = ?", (video_id,))
+        ocr_kf_count = c.fetchone()[0]
+        c.execute("SELECT COUNT(*) FROM ocr_items WHERE video_id = ?", (video_id,))
+        ocr_item_count = c.fetchone()[0]
+        custom_dict = {
+            "keyframe_count": custom_stats[0],
+            "first_timestamp_ms": custom_stats[1],
+            "last_timestamp_ms": custom_stats[2],
+            "qwen_coverage_count": qwen_count,
+            "ocr_keyframe_count": ocr_kf_count,
+            "ocr_item_count": ocr_item_count,
+            "siglip_mapped_row_count": custom_stats[0],
+        }
+
+        return {
+            "video": v,
+            "media_info": media,
+            "memberships": memberships,
+            "asr": asr_dict,
+            "btc": btc_dict,
+            "custom": custom_dict,
+        }
+
+    def get_frame_drilldown(
+        self,
+        keyframe_uid: str,
+        nearby_asr_window_ms: int = 15000,
+        include_objects: bool = False,
+        object_limit: int = 10,
+    ) -> Dict[str, Any]:
+        """Rich multimodal frame drilldown for BTC or CUSTOM keyframe without inflating memory."""
+        c = self._conn.cursor()
+        is_btc = keyframe_uid.startswith("BTC:")
+
+        kf = self.get_keyframe(keyframe_uid)
+        if not kf:
+            raise ValueError(f"Unknown keyframe_uid '{keyframe_uid}'")
+
+        vid = kf["video_id"]
+        ts = kf["timestamp_ms"]
+
+        video = self.get_video(vid)
+        media = self.get_media_info(vid)
+        memberships = self.get_memberships(vid)
+        nearby_asr = self.get_asr_near(vid, ts, nearby_asr_window_ms)
+
+        if is_btc:
+            c.execute("SELECT * FROM btc_clip_rows WHERE keyframe_uid = ?", (keyframe_uid,))
+            clip_row = c.fetchone()
+            obj_cov = self.get_btc_objects_status(keyframe_uid)
+            nearest_custom = self.nearest_keyframe(vid, ts, "CUSTOM")
+
+            res = {
+                "keyframe_uid": keyframe_uid,
+                "frame_space": "BTC",
+                "video_id": vid,
+                "local_keyframe_no": kf.get("local_keyframe_no"),
+                "frame_idx": kf.get("frame_idx"),
+                "timestamp_ms": ts,
+                "raw_pts_time": kf.get("raw_pts_time"),
+                "fps": kf.get("fps"),
+                "image_relpath": kf.get("image_relpath"),
+                "clip_row": dict(clip_row) if clip_row else None,
+                "existing_faiss_status": "READY",
+                "object_coverage": obj_cov,
+                "nearby_asr": nearby_asr,
+                "taxonomy_memberships": memberships,
+                "media_info": media,
+                "source_video_relpath": video.get("relpath") if video else None,
+                "nearest_other_space": nearest_custom,
+            }
+            if include_objects:
+                c.execute(
+                    "SELECT * FROM btc_objects WHERE keyframe_uid = ? LIMIT ?",
+                    (keyframe_uid, object_limit),
+                )
+                res["sample_objects"] = [dict(r) for r in c.fetchall()]
+            return res
+
+        else:
+            qwen = self.get_qwen(keyframe_uid)
+            ocr_items = self.get_ocr_for_keyframe(keyframe_uid)
+            nearest_btc = self.nearest_keyframe(vid, ts, "BTC")
+
+            return {
+                "keyframe_uid": keyframe_uid,
+                "frame_space": "CUSTOM",
+                "video_id": vid,
+                "frame_idx": kf.get("frame_idx"),
+                "timestamp_ms": ts,
+                "raw_pts_time": kf.get("raw_pts_time"),
+                "embedding_index": kf.get("embedding_index"),
+                "image_relpath": kf.get("image_relpath"),
+                "qwen_semantic": qwen,
+                "ocr_items": ocr_items,
+                "ocr_item_count": len(ocr_items),
+                "siglip_row_ref": f"output/embeddings/{vid}.npy[row={kf.get('frame_idx')}]",
+                "siglip_status": "EMBEDDINGS_READY_INDEX_NOT_BUILT",
+                "nearby_asr": nearby_asr,
+                "taxonomy_memberships": memberships,
+                "media_info": media,
+                "source_video_relpath": video.get("relpath") if video else None,
+                "nearest_other_space": nearest_btc,
+            }
+
+
+    # ------------------------------------------------------------------
     # Low-Level FTS5 Query Smoke Utilities (Not Ranking Engines)
     # ------------------------------------------------------------------
 

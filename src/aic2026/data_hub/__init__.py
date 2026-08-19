@@ -57,6 +57,7 @@ from aic2026.data_hub.validator import (
 )
 from aic2026.data_hub.video_registry import VideoRegistry
 
+from aic2026.data_hub.drilldown_validator import CrossSpaceTimelineValidator
 from aic2026.data_hub.index_registry_models import (
     ArtifactRegistryRecord,
     VectorIndexRecord,
@@ -116,7 +117,7 @@ __all__ = [
     "BtcValidator",
     "BtcCatalogBuilder",
     "BtcRegistry",
-    # Runtime, Taxonomy & Index Registry (M1E)
+    # Runtime, Taxonomy & Index Registry (M1E, M1F)
     "TextNormalizer",
     "TaxonomyNodeRecord",
     "VideoMembershipRecord",
@@ -126,5 +127,7 @@ __all__ = [
     "ArtifactRegistryRecord",
     "DataHubRuntimeBuilder",
     "RuntimeDataHub",
+    "CrossSpaceTimelineValidator",
 ]
+
 

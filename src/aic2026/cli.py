@@ -881,6 +881,78 @@ def cmd_data_hub_video(args: argparse.Namespace) -> int:
         return 2
 
 
+def cmd_data_hub_frame(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.data_hub.runtime_hub import RuntimeDataHub
+
+        hub = RuntimeDataHub.load_from_directory(Path(args.runtime_dir))
+        dd = hub.get_frame_drilldown(
+            args.keyframe_uid,
+            nearby_asr_window_ms=args.nearby_asr_window_ms,
+            include_objects=args.include_objects,
+        )
+        _json_print(dd)
+        return 0
+    except Exception as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+
+
+def cmd_data_hub_nearest(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.data_hub.runtime_hub import RuntimeDataHub
+
+        hub = RuntimeDataHub.load_from_directory(Path(args.runtime_dir))
+        res = hub.nearest_keyframe(
+            video_id=args.video_id,
+            timestamp_ms=args.timestamp_ms,
+            frame_space=args.frame_space,
+        )
+        _json_print(res)
+        return 0
+    except Exception as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+
+
+def cmd_data_hub_timeline(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.data_hub.runtime_hub import RuntimeDataHub
+
+        hub = RuntimeDataHub.load_from_directory(Path(args.runtime_dir))
+        vid = args.video_id
+        dd = hub.get_video_drilldown(vid)
+        _json_print(dd)
+        return 0
+    except Exception as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+
+
+def cmd_validate_data_hub_drilldown(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.data_hub.drilldown_validator import CrossSpaceTimelineValidator
+        from aic2026.data_hub.runtime_hub import RuntimeDataHub
+
+        hub = RuntimeDataHub.load_from_directory(Path(args.runtime_dir))
+        validator = CrossSpaceTimelineValidator(hub)
+        out_summary = Path(args.out) if args.out else Path(args.runtime_dir) / "runtime" / "cross_space_validation_summary.json"
+        summary = validator.run_all(output_summary_path=out_summary)
+        _json_print({
+            "status": summary["status"],
+            "video_drilldowns_passed": summary["video_drilldowns"]["passed"],
+            "total_videos": summary["video_drilldowns"]["total_videos"],
+            "custom_to_btc_p50_ms": summary["cross_space_deltas"]["custom_to_btc"].get("p50_ms"),
+            "btc_to_custom_p50_ms": summary["cross_space_deltas"]["btc_to_custom"].get("p50_ms"),
+            "source_timeline_status": summary["source_timeline_validation"]["status"],
+            "summary_file": str(out_summary),
+        })
+        return 0 if summary["status"] == "PASS" else 3
+    except Exception as exc:
+        _json_print({"status": "REJECTED", "error": str(exc)})
+        return 2
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="aic", description="AIC 2026 reliability/control-plane CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -905,6 +977,31 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--runtime-dir", required=True, help="thư mục retrieval_data_v1")
     p.add_argument("--video-id", required=True, help="video ID cần xem")
     p.set_defaults(func=cmd_data_hub_video)
+
+    p = sub.add_parser("data-hub-frame", help="truy vấn drilldown chi tiết đa phương thức của một keyframe")
+    p.add_argument("--runtime-dir", required=True, help="thư mục retrieval_data_v1")
+    p.add_argument("--keyframe-uid", required=True, help="UID của keyframe (BTC hoặc CUSTOM)")
+    p.add_argument("--nearby-asr-window-ms", type=int, default=15000)
+    p.add_argument("--include-objects", action="store_true")
+    p.set_defaults(func=cmd_data_hub_frame)
+
+    p = sub.add_parser("data-hub-nearest", help="truy vấn keyframe gần nhất trong không gian BTC hoặc CUSTOM")
+    p.add_argument("--runtime-dir", required=True, help="thư mục retrieval_data_v1")
+    p.add_argument("--video-id", required=True, help="ID của video")
+    p.add_argument("--timestamp-ms", type=int, required=True, help="thời điểm ms cần tìm")
+    p.add_argument("--frame-space", choices=("BTC", "CUSTOM"), default="BTC", help="không gian đích")
+    p.set_defaults(func=cmd_data_hub_nearest)
+
+    p = sub.add_parser("data-hub-timeline", help="xem tóm tắt timeline và phân bố keyframes của video")
+    p.add_argument("--runtime-dir", required=True, help="thư mục retrieval_data_v1")
+    p.add_argument("--video-id", required=True, help="ID của video")
+    p.set_defaults(func=cmd_data_hub_timeline)
+
+    p = sub.add_parser("validate-data-hub-drilldown", help="chạy toàn bộ kiểm tra cross-space timeline và drilldown cho 873 video")
+    p.add_argument("--runtime-dir", required=True, help="thư mục retrieval_data_v1")
+    p.add_argument("--out", help="đường dẫn lưu cross_space_validation_summary.json")
+    p.set_defaults(func=cmd_validate_data_hub_drilldown)
+
 
     p = sub.add_parser("build-btc-catalog", help="xây dựng canonical BTC keyframes, CLIP rowmap, objects, media-info")
     p.add_argument("--map-keyframes", required=True, help="thư mục chứa 873 map CSVs")
