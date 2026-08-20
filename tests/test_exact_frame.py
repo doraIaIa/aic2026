@@ -36,8 +36,8 @@ def test_frame_resolve_result_authority_and_delta():
         decoded_frame_ordinal=430,
         decoded_pts_sec=17.198,
         competition_frame_id=516,
-        mapping_method="PTS_AWARE",
-        method="PTS_AWARE",
+        mapping_method="deterministic_int_truncation",
+        method="CFR_FALLBACK",
         authority="SOURCE_VIDEO",
     )
 
@@ -48,5 +48,12 @@ def test_frame_resolve_result_authority_and_delta():
     assert d["resolved_pts_ms"] == 17198
     assert d["delta_ms"] == -2
     assert d["authority"] == "SOURCE_VIDEO"
-    assert d["method"] == "PTS_AWARE"
+    assert d["method"] == "CFR_FALLBACK"
     assert d["jpeg_url"] == "/api/v1/media/L21_V001/frames/430"
+
+
+def test_decode_concurrency_bounded_semaphore():
+    from aic2026.media.resolver import get_decode_semaphore
+    sem = get_decode_semaphore()
+    assert sem._value == 2  # Max 2 concurrent physical decodes
+

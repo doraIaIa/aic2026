@@ -43,3 +43,34 @@ def test_range_stream_unsatisfiable(dummy_video):
     # Request range past end of file (bytes=1500-2000)
     status, body, content_type = _stream_response(video_file, "bytes=1500-2000")
     assert status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE
+
+
+def test_range_stream_tail(dummy_video):
+    tmp_path, video_file, data = dummy_video
+
+    # Explicit tail slice: bytes=900-999 (100 bytes)
+    status, body, content_type = _stream_response(video_file, "bytes=900-999")
+    assert status == HTTPStatus.PARTIAL_CONTENT
+    assert len(body) == 100
+    assert body == data[900:1000]
+
+
+def test_range_stream_suffix(dummy_video):
+    tmp_path, video_file, data = dummy_video
+
+    # Suffix range: bytes=-100 (final 100 bytes)
+    status, body, content_type = _stream_response(video_file, "bytes=-100")
+    assert status == HTTPStatus.PARTIAL_CONTENT
+    assert len(body) == 100
+    assert body == data[900:1000]
+
+
+def test_range_stream_open_ended(dummy_video):
+    tmp_path, video_file, data = dummy_video
+
+    # Open-ended range: bytes=800- (200 bytes)
+    status, body, content_type = _stream_response(video_file, "bytes=800-")
+    assert status == HTTPStatus.PARTIAL_CONTENT
+    assert len(body) == 200
+    assert body == data[800:1000]
+

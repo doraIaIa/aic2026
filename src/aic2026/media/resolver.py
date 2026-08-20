@@ -152,8 +152,8 @@ class FrameResolveResult:
         decoded_frame_ordinal: int,
         decoded_pts_sec: float,
         competition_frame_id: int,
-        mapping_method: str = "PTS_AWARE",
-        method: str = "PTS_AWARE",
+        mapping_method: str = "deterministic_int_truncation",
+        method: str = "CFR_FALLBACK",
         authority: str = "SOURCE_VIDEO",
     ) -> None:
         self.video_id = video_id
@@ -446,7 +446,7 @@ def _resolve_frame_at_time(
         decoded_pts_sec=identity.decoded_pts_sec,
         competition_frame_id=identity.competition_frame_id,
         mapping_method=identity.mapping_method,
-        method="PTS_AWARE",
+        method="CFR_FALLBACK",
         authority="SOURCE_VIDEO",
     )
 
@@ -458,6 +458,15 @@ def _frame_id_to_pts(path: Path, frame_id: int, meta: VideoMeta) -> float:
     return round(frame_id / meta.fps, 6) if meta.fps > 0 else 0.0
 
 
+# Explicit bounded semaphore for expensive physical video frame decodes (max 2 concurrent decodes)
+_DECODE_SEMAPHORE = threading.BoundedSemaphore(2)
+
+
+def get_decode_semaphore() -> threading.BoundedSemaphore:
+    """Returns the global bounded semaphore used for physical ffmpeg extraction."""
+    return _DECODE_SEMAPHORE
+
+
 def decode_frame_jpeg(path: Path, frame_id: int, meta: VideoMeta) -> bytes:
     """Decode frame_id to JPEG bytes using exact timeline decoding and LRU cache.
     
@@ -466,46 +475,55 @@ def decode_frame_jpeg(path: Path, frame_id: int, meta: VideoMeta) -> bytes:
     1. Fast coarse seek to `pts - 5` seconds using `-ss` before `-i`.
     2. `-copyts` to preserve absolute timestamps.
     3. `select='gte(t,{pts - 0.001})'` to decode exactly the requested frame.
+    4. Bounded concurrency (max 2 simultaneous ffmpeg processes) to protect host resources.
     """
     from aic2026.media.cache import get_global_frame_cache
     cache = get_global_frame_cache()
+    # Cache hit returns immediately without entering decode semaphore
     cached = cache.get(meta.video_id, frame_id)
     if cached:
         return cached
 
-    target_pts = _frame_id_to_pts(path, frame_id, meta)
-    seek_pts = max(0.0, target_pts - 5.0)
-    
-    cmd = [
-        "ffmpeg",
-        "-v", "error",
-        "-ss", f"{seek_pts:.6f}",
-        "-i", str(path),
-        "-copyts",
-        "-vf", f"select='gte(t,{target_pts - 0.001})'",
-        "-vsync", "vfr",
-        "-vframes", "1",
-        "-f", "image2",
-        "-vcodec", "mjpeg",
-        "pipe:1",
-    ]
-    try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            timeout=15,
-            check=False,
-        )
-    except FileNotFoundError:
-        cache.errors += 1
-        raise DecodeError("ffmpeg not found; install ffmpeg package")
-    except subprocess.TimeoutExpired:
-        cache.errors += 1
-        raise DecodeError("ffmpeg timed out decoding frame")
-    if result.returncode != 0 or not result.stdout:
-        cache.errors += 1
-        raise DecodeError(f"ffmpeg decode error (rc={result.returncode}): {result.stderr[:300]}")
-    
-    jpeg_bytes = result.stdout
-    cache.put(meta.video_id, frame_id, jpeg_bytes)
-    return jpeg_bytes
+    # Only cold cache misses acquire the decode semaphore
+    with _DECODE_SEMAPHORE:
+        # Double-check cache in case concurrent worker already decoded this frame
+        cached = cache.get(meta.video_id, frame_id)
+        if cached:
+            return cached
+
+        target_pts = _frame_id_to_pts(path, frame_id, meta)
+        seek_pts = max(0.0, target_pts - 5.0)
+        
+        cmd = [
+            "ffmpeg",
+            "-v", "error",
+            "-ss", f"{seek_pts:.6f}",
+            "-i", str(path),
+            "-copyts",
+            "-vf", f"select='gte(t,{target_pts - 0.001})'",
+            "-vsync", "vfr",
+            "-vframes", "1",
+            "-f", "image2",
+            "-vcodec", "mjpeg",
+            "pipe:1",
+        ]
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                timeout=15,
+                check=False,
+            )
+        except FileNotFoundError:
+            cache.errors += 1
+            raise DecodeError("ffmpeg not found; install ffmpeg package")
+        except subprocess.TimeoutExpired:
+            cache.errors += 1
+            raise DecodeError("ffmpeg timed out decoding frame")
+        if result.returncode != 0 or not result.stdout:
+            cache.errors += 1
+            raise DecodeError(f"ffmpeg decode error (rc={result.returncode}): {result.stderr[:300]}")
+        
+        jpeg_bytes = result.stdout
+        cache.put(meta.video_id, frame_id, jpeg_bytes)
+        return jpeg_bytes

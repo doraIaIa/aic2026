@@ -206,10 +206,12 @@ def _stream_response(
     partial = False
 
     if range_header:
-        m = re.match(r"bytes=(\d+)-(\d*)", range_header.strip(), re.IGNORECASE)
-        if m:
-            start = int(m.group(1))
-            end_str = m.group(2)
+        header_str = range_header.strip()
+        m_standard = re.match(r"bytes=(\d+)-(\d*)", header_str, re.IGNORECASE)
+        m_suffix = re.match(r"bytes=-(\d+)", header_str, re.IGNORECASE)
+        if m_standard:
+            start = int(m_standard.group(1))
+            end_str = m_standard.group(2)
             end = int(end_str) if end_str else total_size - 1
             end = min(end, total_size - 1)
             if start > end or start >= total_size:
@@ -218,6 +220,21 @@ def _stream_response(
                     f"Range {start}-{end} not satisfiable for size {total_size}",
                 )
             partial = True
+        elif m_suffix:
+            suffix_len = int(m_suffix.group(1))
+            if suffix_len <= 0:
+                return _json_error(
+                    HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE,
+                    f"Suffix length {suffix_len} not satisfiable for size {total_size}",
+                )
+            start = max(0, total_size - suffix_len)
+            end = total_size - 1
+            partial = True
+        else:
+            return _json_error(
+                HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE,
+                f"Malformed Range header: {range_header}",
+            )
 
     chunk_size = end - start + 1
     try:
