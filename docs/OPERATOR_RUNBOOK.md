@@ -1,19 +1,19 @@
 # AIC 2026 Competition Operator Runbook
-<!-- docs/OPERATOR_RUNBOOK.md — frozen 2026-08-20 M13-lite -->
+<!-- docs/OPERATOR_RUNBOOK.md — reconciled 2026-08-20 M13R -->
 
-> **This document is the single reference for all competition-day operation.**
-> Read once before competition. Print if needed. No code changes during competition.
+> **This document is the authoritative reference for all competition-day operation.**
+> Read once before competition. No code changes during competition.
 
 ---
 
 ## Quick-Start (3 commands)
 
 ```powershell
-# Terminal 1 — Backend
+# Terminal 1 — Backend (Python / FastAPI-style HTTP server)
 cd F:\AIC_DEV\aic2026
 .venv\Scripts\python -m aic2026.search.api --host 127.0.0.1 --port 8765
 
-# Terminal 2 — Frontend
+# Terminal 2 — Frontend (React 19 + Vite 7 + Tailwind CSS)
 cd F:\aic-video-search-demo
 npm run dev
 
@@ -21,9 +21,10 @@ npm run dev
 http://localhost:3000
 ```
 
-> **⚠ Cold-start warning:** First query after `python -m aic2026.search.api` starts loads GPU models.
-> SigLIP + BTC CLIP take ~**49 s** on RTX 3050. The health endpoint responds immediately; only search queries trigger model load.
-> **Run a warm-up query before the competition starts.**
+> **⚠ Cold-start warning:** First visual query after backend starts loads GPU models.
+> SigLIP + BTC CLIP take ~**30–49 s** cold on RTX 3050. The readiness probe `GET /api/health` responds immediately.
+> `GET /api/v1/capabilities` may also be slow on cold start as it probes model availability.
+> **Run a warm-up query before the competition session starts.**
 
 ---
 
@@ -33,14 +34,15 @@ http://localhost:3000
 |---|---|
 | Python | 3.11.9 |
 | CUDA | 12.1 |
-| GPU | RTX 3050 6GB Laptop |
-| ffmpeg | 8.1.1-full_build |
+| GPU | NVIDIA GeForce RTX 3050 6GB Laptop GPU |
+| ffmpeg / ffprobe | 8.1.1-full_build |
 | Backend port | `127.0.0.1:8765` |
-| Frontend port | `localhost:3000` |
-| Media root | `F:\KTLT\data_extracted\video` |
+| Frontend port | `localhost:3000` (Vite dev server) |
+| Frontend stack | **React 19 + TypeScript + Vite 7 + Tailwind CSS** |
+| Media root | `F:\KTLT\data_extracted\video` (39 local dev / 873 competition) |
 | Artifact root | `F:\AIC_WORK\artifacts` |
-| Backend health | `GET /api/health` → `{"status":"OK"}` |
-| Capabilities | `GET /api/v1/capabilities` (slow — triggers model load) |
+| Health probe | `GET /api/health` → `{"status":"OK"}` (fast readiness probe) |
+| Capabilities probe | `GET /api/v1/capabilities` (slow — may trigger cold provider check) |
 
 ---
 
@@ -56,253 +58,182 @@ Expected: `Overall: PASS  FAIL: 0  WARN: 0  PASS: 25`
 
 If any check FAILs, see §8 Troubleshooting before starting.
 
+> **Target machine deployment:** Ensure `m13_preflight.py` and artifact folders are copied to the target competition workstation at matching paths or configured via environment variables.
+
 ---
 
-## 3. Lane Reference
+## 3. Lane Reference & Provider Classifications
 
 ### 3.1 Visual Lanes
 
-| Lane ID | Model | Frame Space | Query Type |
-|---|---|---|---|
-| `siglip_custom` | SigLIP2-base-patch16-224 | CUSTOM (116,767 kf) | Natural language / visual description |
-| `btc_clip` | ViT-B-32 (open-clip) | BTC (177,321 kf) | Natural language / visual description |
+| Lane ID | Model | Frame Space | Query Type | Classification |
+|---|---|---|---|---|
+| `siglip_custom` | SigLIP2-base-patch16-224 | CUSTOM (116,767 kf) | Natural language / visual description | **HEALTHY** |
+| `btc_clip` | ViT-B-32 (open-clip) | BTC (177,321 kf) | Natural language / visual description | **HEALTHY** |
 
-**Use for:** Any query describing what is visible on screen.
+**Use for:** Any query describing visual elements visible on screen.
 
 ### 3.2 Speech (ASR) Lanes
 
-| Lane ID | Model | Frame Space | Query Type |
-|---|---|---|---|
-| `asr_bge` | BAAI/bge-m3 | SOURCE (segments) | Spoken words / speech content |
-| `asr_bm25` | BM25 | SOURCE | Exact spoken keywords (**DEGRADED** on dev machine) |
+| Lane ID | Model | Frame Space | Query Type | Classification |
+|---|---|---|---|---|
+| `asr_bge` | BAAI/bge-m3 | SOURCE (segments) | Spoken content / semantic speech | **HEALTHY** |
+| `asr_bm25` | BM25 (SQLite FTS5) | SOURCE (segments) | Exact spoken keywords | **DEGRADED on dev** |
 
-**Use for:** Queries about what is being said, spoken announcements, names mentioned.
+**Use for:** Queries about speech, announcements, spoken names.
 
 ### 3.3 OCR Lanes
 
-| Lane ID | Model | Frame Space | Query Type |
-|---|---|---|---|
-| `ocr_trigram` | Trigram FTS | CUSTOM | On-screen text (brand, sign, label) |
-| `ocr_bge` | BAAI/bge-m3 | CUSTOM | On-screen text — semantic |
-| `ocr_bm25` | BM25 | CUSTOM | Exact on-screen keywords (**DEGRADED** on dev machine) |
+| Lane ID | Model | Frame Space | Query Type | Classification |
+|---|---|---|---|---|
+| `ocr_trigram` | Character 3-gram FTS | CUSTOM | On-screen text (typo-tolerant) | **DEGRADED on dev** (missing `ocr_items`) |
+| `ocr_bge` | BAAI/bge-m3 | CUSTOM | On-screen text — semantic | **DEGRADED on dev** (missing `ocr_items`) |
+| `ocr_bm25` | BM25 (SQLite FTS5) | CUSTOM | Exact on-screen keywords | **DEGRADED on dev** |
 
-**Use for:** Queries about visible text (signs, banners, titles, subtitles).
-
-> **Note:** `ocr_trigram` may return EMPTY for very short queries (1–2 chars). This is expected.
+**Use for:** On-screen text, brand names, signage, titles, subtitles.
 
 ### 3.4 Qwen Caption Lanes
 
-| Lane ID | Model | Frame Space | Query Type |
-|---|---|---|---|
-| `qwen_structured` | Structured rank | CUSTOM | JSON config: `objects`, `scene`, `activity`, `setting` |
-| `qwen_bge` | BAAI/bge-large-en-v1.5 | CUSTOM | Dense semantic over VL captions |
-| `qwen_bm25` | BM25 | CUSTOM | Keyword match over VL captions (**may return EMPTY** for natural language) |
+| Lane ID | Model | Frame Space | Query Type | Classification |
+|---|---|---|---|---|
+| `qwen_structured` | Structured Facet Rank | CUSTOM | Structured JSON facets | **HEALTHY** |
+| `qwen_bge` | BAAI/bge-large-en-v1.5 | CUSTOM | Dense semantic over VL captions | **HEALTHY** |
+| `qwen_bm25` | BM25 (SQLite FTS5) | CUSTOM | Lexical keyword over VL captions | **DEGRADED on dev** |
 
-**Use for:** Compositional queries, queries about scene understanding, activity, setting.
+**Use for:** Scene understanding, complex compositions, multi-attribute queries.
 
-**Qwen Structured config example:**
+**Qwen Structured accepted schema:**
 ```json
 {
   "objects": ["person", "microphone"],
+  "attributes": ["formal suit"],
+  "relations": ["standing at"],
   "scene": "press conference",
-  "activity": "speaking",
-  "setting": "indoor"
+  "actions": ["speaking", "announcing"],
+  "counts": ["one person"]
 }
 ```
 
 ### 3.5 Object Detection Lane
 
-| Lane ID | Frame Space | Query Type |
-|---|---|---|
-| `btc_objects` | BTC | Structured: `classes` list + confidence threshold |
+| Lane ID | Frame Space | Query Type | Classification |
+|---|---|---|---|
+| `btc_objects` | BTC (177,321 kf) | Structured detector classes | **HEALTHY** |
 
-**BTC Object classes** (examples): `person`, `car`, `motorcycle`, `truck`, `bus`, `bicycle`, `traffic light`, `fire hydrant`, `stop sign`, `chair`, `tv`, `laptop`, `cell phone`, `book`, `bottle`.
+**Accepted fields:**
+- `classes`: list of class names (e.g. `["person", "car"]`)
+- `match_mode`: `"ALL"` or `"ANY"` (default: `"ALL"`)
+- `min_detector_score`: float 0.0 to 1.0 (default: `0.1`)
+- `top_k`: integer (default: `50`)
 
 **Config example:**
 ```json
-{"classes": ["person", "car"], "threshold": 0.5}
+{
+  "classes": ["person", "car"],
+  "match_mode": "ALL",
+  "min_detector_score": 0.5,
+  "top_k": 20
+}
 ```
 
 ---
 
-## 4. Query Strategies
+## 4. Query Modes & Execution Semantics
 
-### 4.1 Single Mode — Decision Tree
+### 4.1 Single Mode
 
-```
-Query type?
-├── Visual description ("người đứng trước biển hiệu", "fire truck on road")
-│   ├── → siglip_custom  (best for natural language)
-│   └── → btc_clip       (use if siglip gives poor results)
-├── Spoken content ("ông ấy nói về kinh tế", "emergency broadcast")
-│   └── → asr_bge
-├── On-screen text ("VNPT", "Thủ tướng", "Brand logo")
-│   ├── → ocr_trigram    (fast, exact)
-│   └── → ocr_bge        (semantic)
-├── Scene/Activity ("press conference", "outdoor market at night")
-│   └── → qwen_bge  or  qwen_structured
-└── Object detection ("find frames with person + car")
-    └── → btc_objects
-```
+Executes a single retrieval lane independently.
+- Operator selects lane and types query text or structured config.
+- Results displayed as ranked candidate cards with thumbnails, timestamps, and video IDs.
 
-### 4.2 Compare Mode — Recommended Pairs
+### 4.2 Compare Mode
 
-| Scenario | Lanes to compare |
-|---|---|
-| Visual query, want confidence | `siglip_custom` vs `btc_clip` |
-| Text on screen + visual | `ocr_trigram` vs `siglip_custom` |
-| ASR + visual | `asr_bge` vs `siglip_custom` |
-| Full evidence sweep | `siglip_custom` + `btc_clip` + `asr_bge` + `ocr_bge` + `qwen_bge` |
+Executes multiple selected lanes for the same query.
+- **Execution model:** `SEQUENTIAL` (lanes dispatched in deterministic sequence with partial-failure isolation).
+- Results displayed in side-by-side per-lane columns.
+- **No cross-lane fusion or score normalization** is performed.
 
-### 4.3 Sequence Mode — Key Rules
+### 4.3 Sequence Mode (Temporal Reasoning)
 
-1. Each step is **one lane + one query**.
-2. `strict_order = ON` → steps must occur in temporal order in the same video.
-3. `strict_order = OFF` → steps just need to co-occur in same video within gap window.
-4. `min_gap_sec` / `max_gap_sec` controls the time window between steps.
-5. Result types: `FULL` (all steps matched), `PARTIAL` (some steps matched), `STEP_ONLY` (only 1 step matched, other lane DEGRADED).
-6. Click any result to open Inspector and verify exact frames.
-
-**Typical 2-step sequence config:**
-- Step 1: `siglip_custom`, query = visual anchor
-- Step 2: `siglip_custom` or `asr_bge`, query = temporal target
-- Gap: `min=0, max=60`, `strict_order=ON`
+Executes multi-step temporal sequence retrieval across independent temporal-capable lanes.
+- Each step defines one lane and query/options.
+- **`strict_order = true`:**
+  - Steps must appear in strictly ascending temporal order in the same video.
+  - Consecutive gap must satisfy `min_gap_ms <= (start_next - end_prev) <= max_gap_ms`.
+  - Total span must satisfy `total_span <= max_span_ms` (if configured).
+- **`strict_order = false`:**
+  - Ordered gap constraints are **bypassed**.
+  - Steps must co-occur in the same video, constrained only by `max_span_ms` (if specified).
+- **Result groups:** `FULL_MATCH` (all steps matched), `PARTIAL_MATCH` / `STEP_ONLY_MATCH` (subset matched or degraded step isolated).
 
 ---
 
-## 5. Inspector Usage
+## 5. Media Inspector & Physical Frame Authority
 
-The Inspector opens when you click any search result card.
+The Inspector panel opens when any result card is clicked.
 
 ### Panel layout:
+- **Left / Center:** Exact source frame JPEG (decoded on-demand from physical H.264 video via ffmpeg) + HTML5 video player.
+- **Right top:** Nearest CUSTOM keyframe (from SigLIP universe).
+- **Right bottom:** Nearest BTC keyframe (from BTC universe).
+- **Metadata:** Canonical video ID, timestamp PTS, FPS, total frame count.
 
-| Section | Content |
+### Keyboard Shortcuts (Physical Frame Navigation):
+
+| Key | Action |
 |---|---|
-| Top-left | Source video ID, video filename |
-| Center | **Exact source frame** JPEG (physical decode from H.264) |
-| Right-top | Nearest CUSTOM keyframe (SigLIP keyframe universe) |
-| Right-bottom | Nearest BTC keyframe (BTC-provided keyframe universe) |
+| `←` / `→` | **±1 SOURCE frame** (`delta: -1 / +1`) |
+| `Shift + ←` / `Shift + →` | **±10 SOURCE frames** (`delta: -10 / +10`) |
+| `J` / `L` | **-3 s / +3 s** time jump |
+| `Shift + J` / `Shift + L` | **-10 s / +10 s** time jump |
 
-### Navigation:
-
-| Key / Button | Action |
-|---|---|
-| ← → arrows | ±1 frame |
-| Shift + ← → | ±10 frames |
-| Alt + ← → | ±1 second |
-| Click timeline | Jump to timestamp |
-| Submit / QA button | Submit frame as answer |
-
-> **Authority:** The center exact-frame JPEG is the physical source frame authority.
-> Nearest-keyframe panels are for cross-reference. Always submit from the source frame.
+> **Authority Statement:** The center exact-frame JPEG is the physical source frame authority (PSNR=inf against source decode). Nearest-keyframe panels provide cross-universe alignment only.
 
 ---
 
-## 6. Submitting Answers
+## 6. Scope of Release & Answer Verification
 
-**KIS (Known Item Search — Single answer):**
-1. Search → find correct video/frame
-2. Open Inspector
-3. Verify exact frame
-4. Click **Submit** button
-
-**QA (Question Answering):**
-1. Find correct video segment
-2. In Inspector, navigate to the specific frame range
-3. Enter text answer in the QA field
-4. Click **Submit QA**
+> [!IMPORTANT]
+> **Scope Notice:** The current frozen core release ends at **exact frame and answer evidence verification** in the Media Inspector.
+> Official competition submission API integration / automated submission export is **outside the scope** of this release.
+> The Inspector provides a copy button (`Copy`) to copy the verified video ID, timecode, and evidence ID to the clipboard for manual submission.
 
 ---
 
 ## 7. Warm-Up Checklist (run before competition)
 
 ```
-[ ] preflight passes (25/25)
-[ ] backend health: curl http://127.0.0.1:8765/api/health → {"status":"OK"}
-[ ] run warm-up query: siglip_custom "người đứng" → see results appear
-[ ] run warm-up query: btc_clip "person at podium" → see results appear
-[ ] Inspector opens from first result, exact frame loads
-[ ] Sequence mode: 2-step test query completes
-[ ] Compare mode: 2-lane test query shows per-lane columns
+[ ] Preflight passes: .venv\Scripts\python F:\AIC_WORK\artifacts\retrieval_v2\m13_preflight.py
+[ ] Backend health probe: curl http://127.0.0.1:8765/api/health -> {"status":"OK"}
+[ ] Run warm-up visual query: siglip_custom "nguoi dung" (pre-loads GPU weights)
+[ ] Run warm-up visual query: btc_clip "person at podium"
+[ ] Open Inspector from first result card, confirm exact JPEG frame loads
+[ ] Test frame stepping: press Right arrow (+1 frame), Shift+Right (+10 frames)
+[ ] Run test sequence query (2 steps)
+[ ] Run test compare query (2 lanes)
 ```
 
 ---
 
 ## 8. Troubleshooting
 
-### Backend won't start
-```
-Error: address already in use → kill existing python process:
-  Get-Process python | Stop-Process
-  .venv\Scripts\python -m aic2026.search.api --host 127.0.0.1 --port 8765
-```
-
-### No GPU detected
-```
-Symptom: "gpu WARN CUDA not available"
-Action: Check nvidia-smi, restart GPU driver, verify CUDA 12.1 installed
-Fallback: System runs on CPU (much slower ~5-10× per query)
-```
-
-### Exact frame doesn't load
-```
-Symptom: Inspector shows placeholder/error instead of JPEG
-Check: F:\KTLT\data_extracted\video\ has the video file
-Check: ffmpeg is on PATH (ffmpeg --version)
-Check: video_id matches a file in media root
-```
-
-### Lane returns EMPTY
-```
-This is EXPECTED for:
-  - ocr_trigram on very short queries
-  - qwen_bm25 on natural language queries
-  - asr_bm25 on this dev machine (artifact missing)
-Action: switch to semantic lane (ocr_bge, qwen_bge, asr_bge)
-```
-
-### Slow first query
-```
-Expected: ~49s for first siglip/btc_clip query (GPU model load)
-Expected: ~2-5s for first asr_bge/ocr_bge/qwen_bge query
-Subsequent: <2s
-Action: Run warm-up query before competition starts
-```
-
-### Compare mode — one lane blank
-```
-Expected if that lane is DEGRADED or returns EMPTY
-Other lanes still show results independently
-No action needed
-```
-
-### Sequence returns STEP_ONLY
-```
-Means: one step lane was DEGRADED, results from functional step shown
-Action: switch degraded step to a working lane (asr_bge instead of asr_bm25)
-```
+| Symptom | Cause | Action |
+|---|---|---|
+| Backend fails to start (port in use) | Previous python process holding port 8765 | `Get-Process python \| Stop-Process -Force` then restart backend |
+| Slow first query (~30–49 s) | PyTorch / HF model weights loading to CUDA | Expected on first query; subsequent queries are fast (<1 s) |
+| Exact frame JPEG fails to load | Video file not present in media root | Check `F:\KTLT\data_extracted\video\<video_id>.mp4` exists |
+| Lane returns EMPTY | Query terms absent in vocabulary / short query | Expected behavior; try alternative synonyms or semantic lane |
+| Lane returns DEGRADED / 500 | FTS table or mapping DB absent on dev machine | Use healthy dense lanes (`siglip_custom`, `btc_clip`, `asr_bge`, `qwen_bge`) |
+| Sequence returns `STEP_ONLY` | One step lane was degraded | Change degraded step to a healthy lane |
 
 ---
 
-## 9. Do NOT During Competition
-
-- Do **NOT** restart the backend mid-query (causes active request to fail)
-- Do **NOT** run `pip install`, `npm install`, or any build commands
-- Do **NOT** modify any source files
-- Do **NOT** rebuild any FAISS indexes
-- Do **NOT** change `MEDIA_ROOT` or any config path
-- Do **NOT** run the backend on a public port (keep `--host 127.0.0.1`)
-
----
-
-## 10. Emergency Restart
+## 9. Emergency Restart
 
 If backend crashes:
 ```powershell
 cd F:\AIC_DEV\aic2026
 .venv\Scripts\python -m aic2026.search.api --host 127.0.0.1 --port 8765
-# Wait ~3s for health endpoint to respond
-# Run warm-up query to pre-load models (~49s)
 ```
 
 If frontend crashes:
@@ -311,28 +242,8 @@ cd F:\aic-video-search-demo
 npm run dev
 ```
 
-No state to recover — all indexes are persistent files. Restart is clean.
+All indexes and databases are static, persistent files on disk. Restart is instantaneous and requires **zero index rebuild**.
 
 ---
 
-## 11. File Locations Reference
-
-| Path | Description |
-|---|---|
-| `F:\AIC_DEV\aic2026\` | Core backend (Python) |
-| `F:\aic-video-search-demo\` | Frontend (Svelte) |
-| `F:\KTLT\data_extracted\video\` | Video files (39 local, 873 full) |
-| `F:\AIC_WORK\artifacts\retrieval_v2\siglip_custom_v1\` | SigLIP FAISS index |
-| `F:\AIC_WORK\artifacts\canonical_btc_v1\` | BTC CLIP FAISS index |
-| `F:\AIC_WORK\artifacts\retrieval_v2\asr_bge_v1\` | ASR BGE FAISS index |
-| `F:\AIC_WORK\artifacts\retrieval_v2\ocr_trigram_v1\` | OCR Trigram SQLite DB |
-| `F:\AIC_WORK\artifacts\retrieval_v2\ocr_bge_v1\` | OCR BGE FAISS index |
-| `F:\AIC_WORK\artifacts\retrieval_v2\qwen_structured_v1\` | Qwen structured SQLite DB |
-| `F:\AIC_WORK\artifacts\retrieval_v2\qwen_bge_v1\` | Qwen BGE FAISS index |
-| `F:\AIC_WORK\artifacts\retrieval_v2\btc_objects_v1\` | BTC Object detection DB |
-| `F:\AIC_WORK\artifacts\retrieval_v2\release_freeze\AIC2026_CORE_RELEASE_V1.json` | Release manifest |
-| `F:\AIC_WORK\artifacts\retrieval_v2\m13_preflight.py` | Preflight inspector |
-
----
-
-*Document frozen at M13-lite. Do not modify without explicit milestone update.*
+*Document reconciled and frozen for M13R release — 2026-08-20.*

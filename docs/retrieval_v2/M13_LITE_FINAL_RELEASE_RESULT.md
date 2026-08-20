@@ -1,195 +1,146 @@
-# M13-lite Final Result — AIC 2026 Core Workstation Release
-<!-- docs/retrieval_v2/M13_LITE_FINAL_RELEASE_RESULT.md — frozen 2026-08-20 -->
+# M13R Final Release Reconciliation — AIC 2026 Core Workstation
+<!-- docs/retrieval_v2/M13_LITE_FINAL_RELEASE_RESULT.md — reconciled 2026-08-20 M13R -->
 
 ## Release Identity
 
 | Field | Value |
 |---|---|
-| Milestone | **M13-lite** |
-| Status | **PASS** |
-| Core git | `1bc3be6` |
-| Frontend git | `2824418` |
-| Freeze date | 2026-08-20 |
+| Milestone | **M13R (Final Release Reconciliation)** |
+| Core Code HEAD | `1bc3be6af9e17bb329b9abfb3a2217a6403fa9de` (`1bc3be6`) |
+| Core Final Release HEAD | `HEAD` (current reconciled freeze commit) |
+| Frontend HEAD | `28244182970b4512add950949b5a989f785cbc1b` (`2824418`) |
+| Freeze Date | 2026-08-20 |
 | Preflight | 25/25 PASS |
-| Rehearsal | 26/26 PASS |
+| Rehearsal Status | **26/26 VERIFIED_EXECUTED (PASS)** |
 
 ---
 
-## Milestone Chain
+## Release Status Semantics
 
 ```
-M0  Baseline freeze                   CLOSED
-M1  Universe registry                  CLOSED
-M2  SigLIP lane                        CLOSED
-M3  BTC CLIP lane                      CLOSED
-M4  ASR / OCR / Media lanes            CLOSED
-M5  Qwen + Object lanes                CLOSED
-M6  Compare mode                       CLOSED
-M7  Manual Sequence mode               PASS
-M7R Temporal audit                     PASS
-M9  Media Inspector hardening          PASS
-M9F Authority fix (source frame)       PASS
-M9G Real-source closure (PSNR=inf)     PASS
-──────────────────────────────────────────
-M13-lite  Final hardening / rehearsal  PASS ← THIS DOCUMENT
+CORE_SOFTWARE_RELEASE_FROZEN                = YES
+LOCAL_DEV_RUNTIME_READY                     = YES (39 / 873 videos)
+FULL_CORPUS_COMPETITION_DEPLOYMENT_READY    = UNVERIFIED
+CORE_COMPETITION_WORKSTATION_READY          = PENDING_DEPLOYMENT
+M13_FINAL_ACCEPTANCE                        = SOFTWARE_PASS
 ```
+
+### Rationale:
+- **Software Freeze**: Core code, tests, build, and API/UI interfaces are verified, stable, and frozen.
+- **Local Dev Runtime**: Fully operational on the locally available 39-video subset (L21 + L22).
+- **Target Deployment**: Unverified in this task because the full 873-video target competition machine was not accessible for direct execution.
+- **Workstation Readiness**: Software PASS; full competition-readiness pending deployment verification on the 873-video server.
 
 ---
 
-## Acceptance Statement
+## Regression Verification
 
-```
-M13_LITE_ACCEPTANCE                  = PASS
-CORE_COMPETITION_WORKSTATION_READY   = YES
-CORE_RELEASE_FROZEN                  = YES
-```
-
-The AIC 2026 Core Retrieval Workstation is **competition-ready** at git `1bc3be6` / frontend `2824418`.
+| Component | Command | Result |
+|---|---|---|
+| Core Backend | `.venv\Scripts\python -m pytest -q tests` | **406 passed, 2 skipped** (in 280.29s) |
+| Frontend Vitest | `npm test -- --run` | **14 test files passed, 63 tests passed** |
+| Frontend Typecheck | `npm run check` (`tsc --noEmit`) | **PASS** (exit code 0) |
+| Frontend Production Build | `npm run build` (`vite build && esbuild`) | **PASS** (built in 15.28s, exit code 0) |
 
 ---
 
-## Evidence
+## Rehearsal Evidence Audit (26/26 VERIFIED_EXECUTED)
 
-### Preflight (25/25 PASS)
-Script: [`m13_preflight.py`](file:///F:/AIC_WORK/artifacts/retrieval_v2/m13_preflight.py)
-Report: `F:\AIC_WORK\artifacts\retrieval_v2\release_rehearsal\m13_lite_001\preflight.json`
+All 26 sessions were executed against the live running backend and physical video media. All individual machine-readable files (`single_sessions.jsonl`, `compare_sessions.jsonl`, `sequence_sessions.jsonl`, `inspector_sessions.jsonl`, `failure_sessions.jsonl`, `manifest.json`, `restart.json`, `summary.json`, `DONE`) are preserved in `F:\AIC_WORK\artifacts\retrieval_v2\release_rehearsal\m13_lite_001\`.
 
-All 25 checks passed:
-- Python 3.11.9 ✓
-- ffmpeg 8.1.1 ✓ / ffprobe ✓
-- GPU: RTX 3050 6GB CUDA=12.1 ✓
-- All 9 required artifacts present ✓
-- 4 optional artifacts DEGRADED_ALLOWED (not blocking) ✓
-- Media root: 39 videos ✓
-- Frame cache writable ✓
-- F: drive: 373.7 GB free ✓ / C: drive: 69.3 GB free ✓
-- All 12 provider classes importable ✓
-- Backend and frontend ports: not running (expected pre-start) ✓
-
-### Regression Tests
-- **Core**: `406 passed, 2 skipped` (`.venv/Scripts/python -m pytest -q tests`)
-- **Frontend**: `63 passed, 14 suites` (`npm test -- --run`), typecheck PASS, build PASS
-
-### Rehearsal (26/26 PASS)
-Full machine-readable report: `F:\AIC_WORK\artifacts\retrieval_v2\release_rehearsal\m13_lite_001\summary.json`
-
-#### Single Mode (7 sessions)
-| Session | Lane | Query | Results | Latency | Status |
+### 1. Single Mode Sessions (7/7 VERIFIED_EXECUTED)
+| ID | Lane | Query / Config | Result Count | Latency | Execution Status |
 |---|---|---|---|---|---|
-| S1 | siglip_custom | nguoi dung truoc bien hieu | 20 | 49 s cold | PASS |
-| S2 | btc_clip | fire truck on highway | 20 | 891 ms | PASS |
-| S3 | siglip_custom | waterfall in forest | 20 | 1806 ms | PASS |
-| S4 | asr_bge | kinh te | 20 | fast | PASS |
-| S5 | ocr_trigram | VNPT | 20 | fast | PASS |
-| S6 | qwen_bge | meeting room presentation | 20 | fast | PASS |
-| S7 | btc_objects | person (threshold=0.5) | 20 | fast | PASS |
+| S1 | `siglip_custom` | "nguoi dung truoc bien hieu" | 20 | 31.3 s (cold) | **VERIFIED_EXECUTED** |
+| S2 | `btc_clip` | "fire truck on highway" | 20 | 22.5 s (cold) | **VERIFIED_EXECUTED** |
+| S3 | `siglip_custom` | "waterfall in forest" | 20 | 256.9 ms (warm) | **VERIFIED_EXECUTED** |
+| S4 | `asr_bge` | "kinh te" | 20 | 23.2 s (cold) | **VERIFIED_EXECUTED** |
+| S5 | `ocr_trigram` | "VNPT" | 0 (degraded on dev) | 1.7 s | **VERIFIED_EXECUTED** |
+| S6 | `qwen_bge` | "meeting room presentation projector" | 20 | 9.8 s (cold) | **VERIFIED_EXECUTED** |
+| S7 | `btc_objects` | `classes=['person']`, `min_detector_score=0.5` | 20 | 300.3 ms | **VERIFIED_EXECUTED** |
 
-#### Compare Mode (6 sessions)
-| Session | Lanes | Query | Per-lane results | Status |
+### 2. Compare Mode Sessions (6/6 VERIFIED_EXECUTED)
+| ID | Lanes | Query | Per-Lane Counts | Latency | Status |
+|---|---|---|---|---|---|
+| C1 | `siglip_custom` + `btc_clip` | "xe canh sat" | 20 + 20 | 712.9 ms | **VERIFIED_EXECUTED** |
+| C2 | `siglip` + `btc` + `ocr_trigram` | "VNPT" | 20 + 20 + 0 (degraded) | 539.8 ms | **VERIFIED_EXECUTED** |
+| C3 | 5 lanes (`siglip`, `btc`, `asr_bge`, `ocr_bge`, `qwen_bge`) | "presentation screen" | 20 + 20 + 20 + 0 + 20 | 38.8 s | **VERIFIED_EXECUTED** |
+| C4 | `siglip` + `asr_bm25` (degraded) | "car accident" | 20 + 0 (PARTIAL status) | 2.6 s | **VERIFIED_EXECUTED** |
+| C5 | `siglip` + `qwen_structured` | "outdoor scene" (`objects=['car']`, `scenes=['outdoor']`) | 20 + 20 | 4.8 s | **VERIFIED_EXECUTED** |
+| C6 | `siglip` + `ocr_bge` + `qwen_bge` | "bao cao ket qua" | 20 + 0 + 20 | 2.0 s | **VERIFIED_EXECUTED** |
+
+### 3. Sequence Mode Sessions (6/6 VERIFIED_EXECUTED)
+| ID | Steps | Lanes | Strict | Results / Group | Status |
+|---|---|---|---|---|---|
+| Q1 | 2 | `btc_clip` → `asr_bm25` | `true` | STEP_ONLY (bm25 degraded) | **VERIFIED_EXECUTED** |
+| Q2 | 2 | `siglip` → `siglip` | `true` | FULL / PARTIAL match | **VERIFIED_EXECUTED** |
+| Q3 | 3 | `siglip` → `ocr_trigram` → `siglip` | `true` | STEP_ONLY (ocr degraded) | **VERIFIED_EXECUTED** |
+| Q4 | 2 | `btc_clip` → `asr_bge` | `false` | Co-occurrence matched (gaps bypassed) | **VERIFIED_EXECUTED** |
+| Q5 | 2 | `siglip` → `btc_clip` | `true` | FULL / PARTIAL match | **VERIFIED_EXECUTED** |
+| Q6 | 2 | `siglip` → `btc_objects` | `true` | FULL / STEP_ONLY match | **VERIFIED_EXECUTED** |
+
+### 4. Media Inspector Sessions (3/3 VERIFIED_EXECUTED)
+| ID | Opened From | Video ID : Frame | Exact JPEG Bytes | Navigation / Stepping | Status |
+|---|---|---|---|---|---|
+| I1 | `siglip_custom` | `L21_V001:75` | 61,355 bytes | +1 frame (76), +10 frames (85) OK | **VERIFIED_EXECUTED** |
+| I2 | `btc_clip` | `L21_V002:100` | 59,929 bytes | Nearest keyframes resolved OK | **VERIFIED_EXECUTED** |
+| I3 | Sequence Chain | `L21_V001:200` | 72,327 bytes | Exact source frame decode OK | **VERIFIED_EXECUTED** |
+
+### 5. Failure / Degraded Handling Sessions (4/4 VERIFIED_EXECUTED)
+| ID | Test | Expected | Actual Result | Status |
 |---|---|---|---|---|
-| C1 | siglip_custom + btc_clip | xe canh sat | 20 + 20 | PASS |
-| C2 | siglip + btc + ocr_trigram | VNPT | 20 + 20 + 20 | PASS |
-| C3 | 5 lanes | presentation screen | 20 each | PASS |
-| C4 | siglip + asr_bm25 (DEGRADED) | car accident | 20 + DEGRADED | PASS |
-| C5 | siglip + qwen_structured | outdoor scene | 20 + 20 | PASS |
-| C6 | siglip + ocr_bge + qwen_bge | bao cao ket qua | 20 each | PASS |
-
-#### Sequence Mode (6 sessions)
-| Session | Steps | Lanes | Strict | Results | Type | Status |
-|---|---|---|---|---|---|---|
-| Q1 | 2 | btc_clip → asr_bm25 | ON | 43 | STEP_ONLY (bm25 DEGRADED) | PASS |
-| Q2 | 2 | siglip → siglip | ON | 20 | FULL/PARTIAL | PASS |
-| Q3 | 3 | siglip → ocr → siglip | ON | 20 | STEP_ONLY | PASS |
-| Q4 | 2 | btc_clip → asr_bge | OFF | 20 | FULL/PARTIAL | PASS |
-| Q5 | 2 | siglip → btc_clip | ON | 20 | FULL/PARTIAL | PASS |
-| Q6 | 2 | siglip → btc_objects | ON | 20 | FULL/STEP_ONLY | PASS |
-
-#### Inspector Mode (3 sessions)
-| Session | Opened From | Frame Space | Exact JPEG | CUSTOM KF | BTC KF | Nav | Status |
-|---|---|---|---|---|---|---|---|
-| I1 | siglip_custom | CUSTOM | YES | YES | YES | YES | PASS |
-| I2 | btc_clip | BTC | YES | YES | YES | YES | PASS |
-| I3 | sequence result | BTC | YES | YES | YES | — | PASS |
-
-#### Failure / Degraded Handling (4 sessions)
-| Session | Test | Graceful | Status |
-|---|---|---|---|
-| F1 | Sequence with asr_bm25 DEGRADED | YES — STEP_ONLY returned | PASS |
-| F2 | Compare with DEGRADED lane | YES — other lanes unaffected | PASS |
-| F3 | /api/health endpoint | YES — 200 OK | PASS |
-| F4 | Invalid endpoint /api/capabilities wrong path | YES — JSON error, not crash | PASS |
+| F1 | Sequence with degraded `asr_bm25` | Graceful HTTP 200 with `PARTIAL`/`STEP_ONLY` | Code 200, no crash | **VERIFIED_EXECUTED** |
+| F2 | Compare with degraded `ocr_bm25` | Graceful HTTP 200 with `PARTIAL` status | Code 200, siglip intact | **VERIFIED_EXECUTED** |
+| F3 | Backend health probe (`/api/health`) | HTTP 200 with `status=OK` | Code 200, status OK | **VERIFIED_EXECUTED** |
+| F4 | Invalid endpoint probe (`/api/v1/invalid-route`) | HTTP 404 structured JSON error | Code 404, server healthy | **VERIFIED_EXECUTED** |
 
 ---
 
-## System Architecture (Frozen)
+## Restart Rehearsal Evidence
 
-```
-Competition Workstation
-│
-├── Frontend  (Svelte / localhost:3000)
-│   ├── Single mode
-│   ├── Compare mode     ─── per-lane tabs, no merging
-│   └── Sequence mode    ─── step config, gap config, strict_order
-│
-└── Backend   (Python / 127.0.0.1:8765)
-    │
-    ├── /api/health
-    ├── /api/v1/capabilities
-    ├── /api/v1/search           ─── single lane
-    ├── /api/v1/search/compare   ─── multi-lane parallel
-    └── /api/v1/search/sequence  ─── temporal sequence
-        │
-        ├── siglip_custom  ─── SigLIP2 FAISS (CUSTOM 116k kf)
-        ├── btc_clip       ─── ViT-B-32 FAISS (BTC 177k kf)
-        ├── asr_bge        ─── BGE-M3 FAISS (SOURCE segments)
-        ├── asr_bm25       ─── SQLite FTS5 [DEGRADED on dev]
-        ├── ocr_trigram    ─── Trigram SQLite
-        ├── ocr_bge        ─── BGE-M3 FAISS (CUSTOM kf)
-        ├── ocr_bm25       ─── SQLite FTS5 [DEGRADED on dev]
-        ├── media_bm25     ─── SQLite FTS5 [DEGRADED on dev]
-        ├── qwen_structured─── SQLite structured rank
-        ├── qwen_bge       ─── BGE-large-en FAISS (CUSTOM kf)
-        ├── qwen_bm25      ─── SQLite FTS5 [DEGRADED on dev]
-        └── btc_objects    ─── Detection postings (BTC kf)
-            │
-            └── MediaResolver ─── Physical H.264 → exact frame JPEG
-                               (BoundedSemaphore=2, LRU 500 items / 100 MB)
-```
-
----
-
-## Query Policy
-
-| Rule | Value |
+| Metric | Value |
 |---|---|
-| LLM query analysis | **DISABLED** |
-| Automatic translation | **DISABLED** |
-| Automatic lane routing | **DISABLED** |
-| Hidden query transformation | **NONE** |
-| Automatic synonym expansion | **DISABLED** |
-| Query decomposition | **DISABLED** |
-
-All retrieval is **deterministic and manual**. Operator enters queries directly into each lane.
+| Backend stopped | **True** (PID terminated, port 8765 cleared) |
+| Backend restarted | **True** (new PID spawned, `/api/health` returned 200 OK) |
+| No index rebuild | **True** (all FAISS / SQLite mtimes unchanged) |
+| No artifact rebuild | **True** (static artifact tree preserved) |
+| Total restart duration | **< 3 s** |
+| Evidence file | `F:\AIC_WORK\artifacts\retrieval_v2\release_rehearsal\m13_lite_001\restart.json` |
 
 ---
 
-## Known Limitations
+## Corpus Reality Reconciliation
 
-1. No verified relevance GT — quality claims blocked by ground truth absence
-2. Structured Qwen/Object searches require manual operator JSON config
-3. `asr_bm25`, `ocr_bm25`, `media_bm25`, `qwen_bm25` artifacts absent on dev machine (DEGRADED_ALLOWED)
-4. Only L21+L22 (39 of 873 videos) present on dev machine
-5. Cold model load: ~49 s first visual query (RTX 3050 6GB)
-6. Sequence decomposition is fully manual (operator defines each step)
-7. No automatic fusion — per-lane independent ranking only
-8. `ocr_trigram` returns EMPTY for very short or single-character queries (expected)
+| Parameter | Value |
+|---|---|
+| Canonical Corpus Count | **873 videos** (L21–L30) |
+| Local Physical Media Count | **39 videos** (L21: 29, L22: 10) |
+| Physical Media Root | `F:\KTLT\data_extracted\video` |
+| Target Competition Environment | **UNVERIFIED** (host containing 873 physical videos not accessible in this session) |
 
 ---
 
-## Operator Reference
+## Operator Runbook Reconciliations
 
-See [`docs/OPERATOR_RUNBOOK.md`](file:///F:/AIC_DEV/aic2026/docs/OPERATOR_RUNBOOK.md) for competition-day operation.
+1. **Frontend Framework**: Corrected from "Svelte" to **React 19 + TypeScript + Vite 7 + Tailwind CSS** (matches `package.json`).
+2. **Sequence `strict_order=false`**: Clarified that ordered `min_gap`/`max_gap` checks are bypassed; same-video co-occurrence and `max_span` apply.
+3. **Qwen Structured Schema**: Reconciled to accepted namespaces (`objects`, `attributes`, `relations`, `counts`, `scene`, `actions`); removed unsupported `activity`/`setting`.
+4. **BTC Objects Config**: Documented accepted field names (`classes`, `match_mode`, `min_detector_score`, `top_k`).
+5. **Inspector Keyboard Shortcuts**: Corrected to actual code handlers (`← / →` ±1 frame, `Shift + ← / →` ±10 frames, `J / L` ±3s, `Shift + J / L` ±10s; removed `Alt+←/→`).
+6. **Submission Scope**: Removed submission/QA instructions; explicitly stated that frozen core ends at exact frame evidence verification.
+7. **Compare Execution Model**: Corrected from "parallel" to **SEQUENTIAL** (deterministic lane-by-lane dispatch).
+8. **Capabilities Endpoint**: Documented `/api/health` as fast readiness probe and `/api/v1/capabilities` as potentially slow/cold.
 
 ---
 
-*Frozen at M13-lite — 2026-08-20. No further code changes without explicit new milestone.*
+## Provider Inventory Classification
+
+| Classification | Count | Providers |
+|---|---|---|
+| **HEALTHY** | 6 | `siglip_custom`, `btc_clip`, `asr_bge`, `qwen_structured`, `qwen_bge`, `btc_objects` |
+| **DEGRADED** | 6 | `asr_bm25`, `ocr_bm25`, `media_bm25`, `qwen_bm25`, `ocr_trigram`, `ocr_bge` |
+| **UNAVAILABLE** | 0 | None (all providers gracefully handle missing/degraded data) |
+
+---
+
+*Reconciled and recorded for M13R release — 2026-08-20.*
