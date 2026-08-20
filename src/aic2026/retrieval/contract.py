@@ -204,7 +204,7 @@ def validate_search_request(raw: Any) -> dict[str, Any]:
     filters = _object(request.get("filters"), "filters")
     _reject_unknown(filters, {"video_ids", "start_sec", "end_sec"}, "filters")
     video_ids = filters.get("video_ids", [])
-    if not isinstance(video_ids, list) or len(video_ids) > 100 or any(not isinstance(item, str) or not item.strip() for item in video_ids):
+    if not isinstance(video_ids, list) or len(video_ids) > 873 or any(not isinstance(item, str) or not item.strip() for item in video_ids):
         raise RetrievalContractError("filters.video_ids không hợp lệ")
     if len(video_ids) != len(set(video_ids)):
         raise RetrievalContractError("filters.video_ids không được trùng")

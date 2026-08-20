@@ -33,11 +33,12 @@ from aic2026.media.resolver import (
 
 from aic2026.media.nearest_keyframe import get_global_keyframe_resolver
 
-# Pattern: /api/v1/media/{video_id}/info|stream|resolve-frame|nearest-keyframes
+# Pattern: /api/v1/media/{video_id}/info|stream|resolve-frame|nearest-keyframes|preview-keyframe
 _INFO_RE = re.compile(r"^/api/v1/media/([^/]+)/info$")
 _STREAM_RE = re.compile(r"^/api/v1/media/([^/]+)/stream$")
 _FRAME_RE = re.compile(r"^/api/v1/media/([^/]+)/frames/(\d+)$")
 _KEYFRAME_RE = re.compile(r"^/api/v1/media/([^/]+)/keyframes/(\d+)$")
+_PREVIEW_KEYFRAME_RE = re.compile(r"^/api/v1/media/([^/]+)/preview-keyframe$")
 _RESOLVE_RE = re.compile(r"^/api/v1/media/([^/]+)/resolve-frame$")
 _NEAREST_RE = re.compile(r"^/api/v1/media/([^/]+)/nearest-keyframes$")
 
@@ -104,6 +105,43 @@ def handle_media_get(
             return _json_ok(res)
         except VideoNotFoundError as exc:
             return _json_error(HTTPStatus.NOT_FOUND, str(exc))
+        except Exception as exc:
+            return _json_error(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
+
+    # --- /preview-keyframe?target_ms=...&space=CUSTOM|BTC ---
+    # Browser-facing approximate preview for segment/video-time evidence.
+    # This uses timestamp search, not ordinal guessing.
+    m = _PREVIEW_KEYFRAME_RE.match(parsed_path)
+    if m:
+        video_id = m.group(1)
+        qs = parse_qs(query_string, keep_blank_values=True)
+        target_raw = (qs.get("target_ms") or qs.get("pts_ms") or qs.get("time_ms") or [""])[0].strip()
+        space_raw = (qs.get("space") or ["CUSTOM"])[0].strip().upper() or "CUSTOM"
+        if not target_raw:
+            return _json_error(HTTPStatus.BAD_REQUEST, "target_ms parameter is required")
+        if space_raw not in {"CUSTOM", "BTC"}:
+            return _json_error(HTTPStatus.BAD_REQUEST, "space must be CUSTOM or BTC")
+        try:
+            target_ms = int(round(float(target_raw)))
+        except ValueError:
+            return _json_error(HTTPStatus.BAD_REQUEST, "target_ms must be a valid integer/number")
+
+        try:
+            resolver.video_info(video_id)
+            kf_resolver = get_global_keyframe_resolver()
+            nearest = kf_resolver.resolve_space(space_raw, video_id, target_ms)["nearest_absolute"]
+            if not nearest or nearest.get("keyframe_no") is None:
+                return _json_error(HTTPStatus.NOT_FOUND, f"No {space_raw} keyframe near {target_ms}ms for {video_id}")
+            keyframe_path = resolver.keyframe_path(video_id, int(nearest["keyframe_no"]))
+            return HTTPStatus.OK, keyframe_path.read_bytes(), "image/jpeg"
+        except MediaUnavailableError as exc:
+            return _json_error(HTTPStatus.SERVICE_UNAVAILABLE, str(exc))
+        except VideoNotFoundError as exc:
+            return _json_error(HTTPStatus.NOT_FOUND, str(exc))
+        except InvalidRequestError as exc:
+            return _json_error(HTTPStatus.BAD_REQUEST, str(exc))
+        except OSError as exc:
+            return _json_error(HTTPStatus.INTERNAL_SERVER_ERROR, f"KEYFRAME_READ_ERROR: {exc}")
         except Exception as exc:
             return _json_error(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
 

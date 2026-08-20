@@ -85,3 +85,28 @@ def test_unknown_video(tmp_rowmaps):
     res = resolver.resolve_all_spaces("UNKNOWN_V99", 10000)
     assert res["custom"]["nearest_absolute"] is None
     assert res["btc"]["nearest_absolute"] is None
+
+
+def test_custom_keyframe_no_is_derived_from_image_relpath(tmp_path: Path):
+    custom_file = tmp_path / "custom_rowmap.jsonl"
+    btc_file = tmp_path / "btc_rowmap.jsonl"
+    custom_file.write_text(
+        json.dumps(
+            {
+                "video_id": "V1",
+                "keyframe_uid": "CUSTOM:V1:F500",
+                "frame_idx": 500,
+                "timestamp_ms": 20000,
+                "image_relpath": "output/keyframes/V1/000042.jpg",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    btc_file.write_text("", encoding="utf-8")
+
+    resolver = NearestKeyframeResolver(custom_file, btc_file)
+    res = resolver.resolve_space("CUSTOM", "V1", 20001)
+
+    assert res["nearest_absolute"]["keyframe_uid"] == "CUSTOM:V1:F500"
+    assert res["nearest_absolute"]["keyframe_no"] == 42

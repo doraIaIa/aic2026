@@ -44,6 +44,48 @@ def _asr_database(path: Path) -> Path:
     return path
 
 
+def _canonical_asr_database(path: Path) -> Path:
+    with closing(sqlite3.connect(path)) as connection:
+        connection.executescript(
+            """
+            CREATE TABLE videos(video_id TEXT PRIMARY KEY, relpath TEXT NOT NULL);
+            CREATE TABLE canonical_asr_segments(
+                segment_uid TEXT PRIMARY KEY,
+                source_segment_id TEXT NOT NULL,
+                video_id TEXT NOT NULL,
+                video_ordinal INTEGER NOT NULL,
+                start_ms INTEGER NOT NULL,
+                end_ms INTEGER NOT NULL,
+                start_sec REAL NOT NULL,
+                end_sec REAL NOT NULL,
+                text_raw TEXT NOT NULL,
+                text_norm TEXT NOT NULL,
+                language TEXT NOT NULL,
+                model TEXT NOT NULL
+            );
+            CREATE TABLE asr_video_coverage(video_id TEXT PRIMARY KEY, asr_status TEXT NOT NULL);
+            CREATE VIRTUAL TABLE asr_fts USING fts5(
+                segment_uid UNINDEXED,
+                video_id UNINDEXED,
+                text_raw,
+                text_norm,
+                text_accentless,
+                tokenize='unicode61 remove_diacritics 2'
+            );
+            INSERT INTO videos VALUES ('V1', 'video/V1.mp4'), ('V2', 'video/V2.mp4');
+            INSERT INTO canonical_asr_segments VALUES
+              ('ASR:V1:000001', 'V1:000001', 'V1', 1, 1000, 3000, 1.0, 3.0, 'Chào mừng quý vị đến thành phố', 'Chào mừng quý vị đến thành phố', 'vi', 'medium'),
+              ('ASR:V2:000001', 'V2:000001', 'V2', 2, 4000, 8000, 4.0, 8.0, 'Tin tức thành phố Hồ Chí Minh', 'Tin tức thành phố Hồ Chí Minh', 'vi', 'medium');
+            INSERT INTO asr_video_coverage VALUES ('V1', 'HAS_SEGMENTS'), ('V2', 'HAS_SEGMENTS');
+            INSERT INTO asr_fts(segment_uid, video_id, text_raw, text_norm, text_accentless) VALUES
+              ('ASR:V1:000001', 'V1', 'Chào mừng quý vị đến thành phố', 'Chào mừng quý vị đến thành phố', 'Chao mung quy vi den thanh pho'),
+              ('ASR:V2:000001', 'V2', 'Tin tức thành phố Hồ Chí Minh', 'Tin tức thành phố Hồ Chí Minh', 'Tin tuc thanh pho Ho Chi Minh');
+            """
+        )
+        connection.commit()
+    return path
+
+
 class FakeIndex:
     d = 2
     ntotal = 2
@@ -87,6 +129,25 @@ def test_asr_provider_typed_output_no_diacritic_and_phrase(tmp_path: Path):
     assert plain[0].score_kind == "bm25_lower_is_better"
     assert plain[0].payload["model"] == "medium"
     assert plain[0].source_video_relpath == "video/V1.mp4"
+
+
+def test_asr_provider_uses_canonical_asr_schema(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    import aic2026.retrieval.providers.asr_bm25 as asr_bm25
+
+    monkeypatch.setattr(asr_bm25, "CANONICAL_ASR_COUNT", 2)
+    monkeypatch.setattr(asr_bm25, "CANONICAL_ASR_VIDEOS_WITH_SEGMENTS", 2)
+    monkeypatch.setattr(asr_bm25, "CANONICAL_ZERO_ASR_VIDEOS", 0)
+    provider = AsrProvider(_canonical_asr_database(tmp_path / "canonical.sqlite"))
+
+    capability = provider.capabilities()
+    hits = provider.search(ProviderQuery("thanh pho", top_k=10))
+
+    assert capability.status == "OK"
+    assert capability.provenance["schema"] == "canonical_asr_segments/asr_fts"
+    assert capability.counts["segments"] == 2
+    assert hits
+    assert hits[0].provider == "asr"
+    assert hits[0].payload["canonical_lane"] == "asr_bm25"
 
 
 def test_asr_product_query_treats_raw_fts_as_literals(tmp_path: Path):

@@ -9,6 +9,7 @@ from __future__ import annotations
 import bisect
 import json
 import logging
+import re
 import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -105,6 +106,12 @@ class NearestKeyframeResolver:
                     frame_idx = int(obj.get("frame_idx", 0))
                     uid = str(obj.get("keyframe_uid") or f"{space}:{video_id}:{ts_ms}")
                     kf_no = obj.get("local_keyframe_no")
+                    if kf_no is None:
+                        kf_no = obj.get("csv_n") or obj.get("keyframe_no") or obj.get("keyframe_id")
+                    if kf_no is None and obj.get("image_relpath"):
+                        match = re.search(r"(\d+)\.jpe?g$", str(obj["image_relpath"]), re.IGNORECASE)
+                        if match:
+                            kf_no = int(match.group(1))
 
                     node = KeyframeNode(
                         space=space,

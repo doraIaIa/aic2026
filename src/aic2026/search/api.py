@@ -12,6 +12,7 @@ from urllib.parse import parse_qs, urlparse
 
 from aic2026.core.config import load_config
 from aic2026.core.paths import PathResolver
+from aic2026.data_hub.runtime_hub import RuntimeDataHub
 from aic2026.media.api_handler import write_stream_response
 from aic2026.media.resolver import MediaResolver
 from aic2026.retrieval.capabilities import CapabilityService
@@ -48,6 +49,23 @@ from aic2026.workspace import WorkspaceError, WorkspaceStore
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
+
+
+def _is_absolute_windows_path(value: str) -> bool:
+    return (len(value) >= 3 and value[1] == ":" and value[2] in {"\\", "/"}) or value.startswith("\\\\")
+
+
+def _sanitize_public_payload(value: Any) -> Any:
+    """Remove local absolute paths from browser-facing JSON payloads."""
+    if isinstance(value, dict):
+        return {key: _sanitize_public_payload(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_sanitize_public_payload(item) for item in value]
+    if isinstance(value, tuple):
+        return [_sanitize_public_payload(item) for item in value]
+    if isinstance(value, str) and _is_absolute_windows_path(value):
+        return "[redacted-local-path]"
+    return value
 
 
 class AsrSearchApi:
@@ -94,6 +112,8 @@ class AsrSearchApi:
 
     @property
     def _mapping_db(self) -> Path:
+        if self.database.exists() and self.database.name == "mapping.sqlite":
+            return self.database
         mapping_path = Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
         if mapping_path.exists():
             return mapping_path
@@ -937,6 +957,60 @@ class AsrSearchApi:
             return HTTPStatus.BAD_REQUEST, payload
         return HTTPStatus.OK, payload
 
+    def taxonomy(self) -> tuple[int, dict[str, Any]]:
+        """Expose the audited Program/Topic taxonomy and branch candidate scopes."""
+        target_db = self._mapping_db
+        if not target_db.exists():
+            return HTTPStatus.SERVICE_UNAVAILABLE, {
+                "status": "ERROR",
+                "error": f"Runtime mapping.sqlite not found at {target_db}",
+            }
+
+        try:
+            with RuntimeDataHub(target_db) as hub:
+                rows = hub._conn.execute(
+                    """
+                    SELECT branch_id, branch_type, label_vi, label_en,
+                           aliases_json, parent_ids_json, requires_region_index
+                    FROM taxonomy_nodes
+                    WHERE active = 1
+                    ORDER BY branch_type ASC, branch_id ASC
+                    """
+                ).fetchall()
+                global_count = hub._conn.execute("SELECT COUNT(*) FROM videos").fetchone()[0]
+                nodes: list[dict[str, Any]] = []
+                for row in rows:
+                    item = dict(row)
+                    branch_id = item["branch_id"]
+                    video_ids = hub.get_branch_videos(branch_id)
+                    nodes.append(
+                        {
+                            "branch_id": branch_id,
+                            "branch_type": item["branch_type"],
+                            "label_vi": item["label_vi"],
+                            "label_en": item["label_en"],
+                            "aliases": json.loads(item.get("aliases_json") or "[]"),
+                            "parent_ids": json.loads(item.get("parent_ids_json") or "[]"),
+                            "requires_region_index": bool(item.get("requires_region_index")),
+                            "count": len(video_ids),
+                            "video_ids": video_ids,
+                        }
+                    )
+        except Exception as exc:
+            return HTTPStatus.INTERNAL_SERVER_ERROR, {
+                "status": "ERROR",
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+
+        return HTTPStatus.OK, {
+            "status": "OK",
+            "taxonomy_id": "taxonomy_authority_v1",
+            "global_count": global_count,
+            "programs": [node for node in nodes if node["branch_type"] == "PROGRAM"],
+            "topics": [node for node in nodes if node["branch_type"] != "PROGRAM"],
+            "nodes": nodes,
+        }
+
 
 def _single_parameter(
     parameters: dict[str, list[str]], field: str, *, required: bool
@@ -954,7 +1028,7 @@ def make_handler(
 ) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         def _write_json(self, status: int, payload: dict[str, Any]) -> None:
-            body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            body = json.dumps(_sanitize_public_payload(payload), ensure_ascii=False).encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
@@ -1003,6 +1077,8 @@ def make_handler(
                     status, payload = application.health()
                 elif parsed.path == "/api/v1/capabilities":
                     status, payload = application.capabilities()
+                elif parsed.path == "/api/v1/taxonomy":
+                    status, payload = application.taxonomy()
                 elif parsed.path in {"/api/v1/lanes/siglip/health", "/api/v1/lanes/siglip_custom/health"}:
                     status, payload = application.siglip_health()
                 elif parsed.path in {"/api/v1/lanes/btc-clip/health", "/api/v1/lanes/btc_clip/health"}:

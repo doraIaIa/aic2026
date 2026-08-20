@@ -15,6 +15,7 @@ from aic2026.retrieval.providers.base import (
     ProviderQuery,
     ProviderUnavailableError,
 )
+from aic2026.retrieval.providers.asr_bm25 import AsrBm25Provider
 from aic2026.search.asr import AsrSearchError, search_asr
 
 
@@ -31,6 +32,20 @@ class AsrProvider:
         self.strategy = strategy
         self._lock = threading.RLock()
         self._capability: ProviderCapability | None = None
+        self._canonical_provider: AsrBm25Provider | None = None
+
+    @staticmethod
+    def _table_exists(connection: sqlite3.Connection, table_name: str) -> bool:
+        row = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?",
+            (table_name,),
+        ).fetchone()
+        return row is not None
+
+    def _get_canonical_provider(self) -> AsrBm25Provider:
+        if self._canonical_provider is None:
+            self._canonical_provider = AsrBm25Provider(self.database)
+        return self._canonical_provider
 
     def capabilities(self) -> ProviderCapability:
         with self._lock:
@@ -43,6 +58,28 @@ class AsrProvider:
                 uri = f"file:{self.database.as_posix()}?mode=ro"
                 with closing(sqlite3.connect(uri, uri=True)) as connection:
                     integrity = connection.execute("PRAGMA integrity_check").fetchone()[0]
+                    if self._table_exists(connection, "canonical_asr_segments") and self._table_exists(connection, "asr_fts"):
+                        canonical = self._get_canonical_provider().health()
+                        if integrity != "ok" or canonical.get("status") != "OK":
+                            raise ProviderIntegrityError(str(canonical.get("error") or "ASR_CANONICAL_INTEGRITY_ERROR"))
+                        self._capability = ProviderCapability(
+                            self.name,
+                            "OK",
+                            None,
+                            "canonical_asr_v1",
+                            {"database_sha256": sha256_file(self.database)},
+                            {
+                                "read_only": True,
+                                "search_authority": "aic2026.retrieval.providers.asr_bm25",
+                                "schema": "canonical_asr_segments/asr_fts",
+                            },
+                            {
+                                "videos": int(canonical.get("canonical_videos", 0)),
+                                "segments": int(canonical.get("canonical_asr_segments", 0)),
+                                "fts_rows": int(canonical.get("fts_rows", 0)),
+                            },
+                        )
+                        return self._capability
                     segments = int(connection.execute("SELECT COUNT(*) FROM asr_segments").fetchone()[0])
                     fts_rows = int(connection.execute("SELECT COUNT(*) FROM asr_segments_fts").fetchone()[0])
                     videos = int(connection.execute("SELECT COUNT(*) FROM videos").fetchone()[0])
@@ -64,6 +101,26 @@ class AsrProvider:
         capability = self.capabilities()
         if capability.status != "OK":
             raise ProviderUnavailableError(capability.reason or capability.status)
+        if capability.provenance.get("schema") == "canonical_asr_segments/asr_fts":
+            canonical_hits = self._get_canonical_provider().search(query)
+            return [
+                ProviderHit(
+                    provider=self.name,
+                    evidence_id=hit.evidence_id,
+                    video_id=hit.video_id,
+                    rank=hit.rank,
+                    start_sec=hit.start_sec,
+                    end_sec=hit.end_sec,
+                    anchor_sec=hit.anchor_sec,
+                    raw_score=hit.raw_score,
+                    score_kind=hit.score_kind,
+                    artifact_version=hit.artifact_version,
+                    source_video_relpath=hit.source_video_relpath,
+                    payload={**hit.payload, "lane": self.name, "canonical_lane": hit.provider},
+                    provenance=hit.provenance,
+                )
+                for hit in canonical_hits
+            ]
         compiled = compile_fts_query(query.query_text, strategy=self.strategy)
         try:
             rows = search_asr(self.database, compiled, limit=query.top_k, video_ids=query.video_ids)
