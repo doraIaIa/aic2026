@@ -22,6 +22,8 @@ from aic2026.retrieval.providers import (
     AsrBm25Provider,
     AsrProvider,
     BtcClipProvider,
+    BtcObjectsProvider,
+    BtcObjectsQuery,
     MediaBm25Provider,
     ObjectProvider,
     OcrBgeProvider,
@@ -62,6 +64,7 @@ class AsrSearchApi:
         qwen_structured_provider: QwenStructuredProvider | None = None,
         qwen_bm25_provider: QwenBm25Provider | None = None,
         qwen_bge_provider: QwenBgeProvider | None = None,
+        btc_objects_provider: BtcObjectsProvider | None = None,
     ) -> None:
         self.database = Path(database)
         self.capability_service = capability_service or CapabilityService(
@@ -80,6 +83,7 @@ class AsrSearchApi:
         self.qwen_structured_provider = qwen_structured_provider
         self.qwen_bm25_provider = qwen_bm25_provider
         self.qwen_bge_provider = qwen_bge_provider
+        self.btc_objects_provider = btc_objects_provider
         self.workspace = WorkspaceStore(self.database)
 
     def close(self) -> None:
@@ -92,6 +96,7 @@ class AsrSearchApi:
             self.qwen_structured_provider,
             self.qwen_bm25_provider,
             self.qwen_bge_provider,
+            self.btc_objects_provider,
         ]:
 
             if p is not None and hasattr(p, "close"):
@@ -669,8 +674,99 @@ class AsrSearchApi:
             "hits": [h.to_dict() for h in hits],
         }
 
+    def btc_objects_health(self) -> tuple[int, dict[str, Any]]:
+        if self.btc_objects_provider is None:
+            default_artifact_dir = Path(r"F:\AIC_WORK\artifacts\retrieval_v2\btc_objects_v1")
+            if default_artifact_dir.exists() and (default_artifact_dir / "btc_objects_postings.sqlite").exists():
+                self.btc_objects_provider = BtcObjectsProvider(artifact_dir=default_artifact_dir)
+            else:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {
+                    "lane_id": "btc_objects",
+                    "status": "UNAVAILABLE",
+                    "error": "BTC Objects index database not found",
+                }
+        h = self.btc_objects_provider.health()
+        status_code = HTTPStatus.OK if h.get("status") == "OK" else HTTPStatus.SERVICE_UNAVAILABLE
+        return status_code, h
 
+    def btc_objects_classes(self) -> tuple[int, dict[str, Any]]:
+        if self.btc_objects_provider is None:
+            status_code, _ = self.btc_objects_health()
+            if status_code != HTTPStatus.OK:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {"status": "ERROR", "error": "BTC Objects lane unavailable"}
+        assert self.btc_objects_provider is not None
+        classes = self.btc_objects_provider.get_classes()
+        return HTTPStatus.OK, {
+            "status": "OK",
+            "lane": "btc_objects",
+            "count": len(classes),
+            "classes": classes,
+        }
 
+    def btc_objects_search(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        if self.btc_objects_provider is None:
+            status_code, _ = self.btc_objects_health()
+            if status_code != HTTPStatus.OK:
+                return HTTPStatus.SERVICE_UNAVAILABLE, {"status": "ERROR", "error": "BTC Objects lane unavailable"}
+        assert self.btc_objects_provider is not None
+
+        raw_classes = request.get("classes") or request.get("class") or request.get("query") or request.get("q")
+        if not raw_classes:
+            return HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": "classes parameter is required"}
+        if isinstance(raw_classes, str):
+            classes_list = [c.strip() for c in raw_classes.split(",") if c.strip()]
+        elif isinstance(raw_classes, list):
+            classes_list = [str(c).strip() for c in raw_classes if str(c).strip()]
+        else:
+            return HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": "classes must be a string or list of strings"}
+
+        if not classes_list:
+            return HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": "classes list cannot be empty"}
+
+        match_mode = request.get("match_mode", "ALL").upper()
+        if match_mode not in ("ALL", "ANY"):
+            return HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": "match_mode must be ALL or ANY"}
+
+        try:
+            min_score = float(request.get("min_detector_score", request.get("min_score", 0.1)))
+        except (ValueError, TypeError):
+            return HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": "min_detector_score must be a float"}
+
+        try:
+            top_k = int(request.get("top_k", 50))
+        except (ValueError, TypeError):
+            return HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": "top_k must be an integer"}
+
+        video_ids = request.get("candidate_video_ids") or request.get("video_ids")
+        candidate_vids = list(video_ids) if video_ids else None
+
+        obj_query = BtcObjectsQuery(
+            classes=classes_list,
+            match_mode=match_mode,
+            min_detector_score=min_score,
+            top_k=top_k,
+            candidate_video_ids=candidate_vids,
+            query_id=request.get("query_id"),
+        )
+
+        t0 = time.perf_counter()
+        hits = self.btc_objects_provider.search_objects(obj_query)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        return HTTPStatus.OK, {
+            "status": "OK",
+            "lane": "btc_objects",
+            "entity_type": "FRAME",
+            "frame_space": "BTC",
+            "classes": classes_list,
+            "match_mode": match_mode,
+            "min_detector_score": min_score,
+            "query_id": request.get("query_id"),
+            "top_k": top_k,
+            "count": len(hits),
+            "elapsed_ms": round(elapsed_ms, 2),
+            "hits": [h.to_dict() for h in hits],
+        }
 
     def health(self) -> tuple[int, dict[str, Any]]:
         if not self.database.is_file():
@@ -799,6 +895,10 @@ def make_handler(
                     status, payload = application.qwen_bm25_health()
                 elif parsed.path in {"/api/v1/lanes/qwen-bge/health", "/api/v1/lanes/qwen_bge/health"}:
                     status, payload = application.qwen_bge_health()
+                elif parsed.path in {"/api/v1/lanes/btc-objects/health", "/api/v1/lanes/btc_objects/health"}:
+                    status, payload = application.btc_objects_health()
+                elif parsed.path in {"/api/v1/lanes/btc-objects/classes", "/api/v1/lanes/btc_objects/classes"}:
+                    status, payload = application.btc_objects_classes()
                 elif parsed.path == "/api/asr/search":
                     status, payload = application.search(parse_qs(parsed.query, keep_blank_values=True))
                 else:
@@ -837,6 +937,8 @@ def make_handler(
                 "/api/v1/lanes/qwen_bm25/search",
                 "/api/v1/lanes/qwen-bge/search",
                 "/api/v1/lanes/qwen_bge/search",
+                "/api/v1/lanes/btc-objects/search",
+                "/api/v1/lanes/btc_objects/search",
             }
             if (
                 parsed.path not in valid_post_paths
@@ -873,6 +975,8 @@ def make_handler(
                     status, payload = application.qwen_bm25_search(request)
                 elif parsed.path in {"/api/v1/lanes/qwen-bge/search", "/api/v1/lanes/qwen_bge/search"}:
                     status, payload = application.qwen_bge_search(request)
+                elif parsed.path in {"/api/v1/lanes/btc-objects/search", "/api/v1/lanes/btc_objects/search"}:
+                    status, payload = application.btc_objects_search(request)
 
                 else:
                     entry_id = parsed.path.rsplit("/", 1)[-1] if parsed.path != "/api/v1/workspace" else None

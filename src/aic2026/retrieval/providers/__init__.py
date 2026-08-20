@@ -20,6 +20,7 @@ from aic2026.retrieval.providers.ocr_bge import OcrBgeProvider
 from aic2026.retrieval.providers.qwen_structured import QwenStructuredProvider
 from aic2026.retrieval.providers.qwen_bm25 import QwenBm25Provider
 from aic2026.retrieval.providers.qwen_bge import QwenBgeProvider
+from aic2026.retrieval.providers.btc_objects import BtcObjectsProvider, BtcObjectsQuery
 
 __all__ = [
     "AsrProvider",
@@ -42,6 +43,8 @@ __all__ = [
     "QwenStructuredProvider",
     "QwenBm25Provider",
     "QwenBgeProvider",
+    "BtcObjectsProvider",
+    "BtcObjectsQuery",
 ]
 
 

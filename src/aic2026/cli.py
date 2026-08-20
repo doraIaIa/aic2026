@@ -1774,8 +1774,120 @@ def cmd_search_qwen_bge(args: argparse.Namespace) -> int:
         return 2
 
 
+def cmd_btc_objects_health(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.providers.btc_objects import BtcObjectsProvider
+
+        artifact_dir = Path(args.artifact_dir) if getattr(args, "artifact_dir", None) else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\btc_objects_v1")
+        provider = BtcObjectsProvider(artifact_dir=artifact_dir)
+        h = provider.health()
+        _json_print(h)
+        return 0 if h.get("status") == "OK" else 1
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
 
 
+def cmd_btc_objects_classes(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.providers.btc_objects import BtcObjectsProvider
+
+        artifact_dir = Path(args.artifact_dir) if getattr(args, "artifact_dir", None) else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\btc_objects_v1")
+        provider = BtcObjectsProvider(artifact_dir=artifact_dir)
+        classes = provider.get_classes()
+        if getattr(args, "limit", None):
+            classes = classes[:args.limit]
+        if args.json:
+            _json_print({
+                "status": "OK",
+                "lane": "btc_objects",
+                "count": len(classes),
+                "classes": classes,
+            })
+        else:
+            print(f"BTC Object Classes (total: {len(classes)}):")
+            print(f"{'ID':<6} {'Entity Name':<25} {'MID':<12} {'Frames':<10} {'Detections':<12} {'Max Score':<10}")
+            print("-" * 80)
+            for c in classes:
+                print(f"{c['class_id']:<6} {c['class_entity']:<25} {c['class_name']:<12} {c['frame_count']:<10} {c['detection_count']:<12} {c['max_score']:<10.4f}")
+        return 0
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
+
+
+def cmd_search_btc_objects(args: argparse.Namespace) -> int:
+    try:
+        from aic2026.retrieval.providers.btc_objects import BtcObjectsProvider, BtcObjectsQuery
+
+        artifact_dir = Path(args.artifact_dir) if getattr(args, "artifact_dir", None) else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\btc_objects_v1")
+        provider = BtcObjectsProvider(artifact_dir=artifact_dir)
+
+        classes = []
+        if getattr(args, "class_name", None):
+            classes.extend(args.class_name)
+        if getattr(args, "classes", None):
+            classes.extend(args.classes)
+        if getattr(args, "query", None) and args.query:
+            classes.extend([c.strip() for c in args.query.split(",") if c.strip()])
+
+        if not classes:
+            _json_print({"status": "ERROR", "error": "At least one class must be specified via --class or positional argument"})
+            return 2
+
+        video_ids = None
+        if getattr(args, "video_id", None):
+            video_ids = [args.video_id]
+        elif getattr(args, "video_ids_file", None):
+            with open(args.video_ids_file, "r", encoding="utf-8") as f:
+                video_ids = [line.strip() for line in f if line.strip()]
+
+        match_mode = getattr(args, "match_mode", "ALL").upper()
+        min_score = getattr(args, "min_score", 0.1)
+        if min_score is None:
+            min_score = getattr(args, "min_detector_score", 0.1)
+
+        obj_query = BtcObjectsQuery(
+            classes=classes,
+            match_mode=match_mode,
+            min_detector_score=min_score,
+            top_k=args.top_k,
+            candidate_video_ids=video_ids,
+        )
+
+        t0 = time.perf_counter()
+        hits = provider.search_objects(obj_query)
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+
+        if args.json:
+            _json_print({
+                "status": "OK",
+                "lane": "btc_objects",
+                "entity_type": "FRAME",
+                "frame_space": "BTC",
+                "classes": classes,
+                "match_mode": match_mode,
+                "min_detector_score": min_score,
+                "top_k": args.top_k,
+                "count": len(hits),
+                "elapsed_ms": round(elapsed_ms, 2),
+                "hits": [h.to_dict() for h in hits],
+            })
+        else:
+            print(f"BTC Objects Search [{match_mode}] classes={classes} min_score={min_score:.2f} (took {elapsed_ms:.1f}ms, {len(hits)} hits)")
+            print(f"{'Rank':<5} {'Score':<8} {'Video ID':<12} {'Keyframe UID':<28} {'Time (s)':<10} {'Matched Classes':<25} {'Top BBox':<25}")
+            print("-" * 120)
+            for h in hits:
+                time_str = f"{h.start_sec:.2f}"
+                matched_str = ", ".join(h.payload.get("matched_classes", []))[:23]
+                bboxes = h.payload.get("top_bboxes", {})
+                first_bbox = list(bboxes.values())[0] if bboxes else []
+                bbox_str = f"[{','.join(f'{x:.2f}' for x in first_bbox)}]" if first_bbox else "N/A"
+                print(f"{h.rank:<5} {h.raw_score:<8.4f} {h.video_id:<12} {h.payload.get('keyframe_uid', ''):<28} {time_str:<10} {matched_str:<25} {bbox_str:<25}")
+        return 0
+    except Exception as exc:
+        _json_print({"status": "ERROR", "error": str(exc)})
+        return 2
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -2286,6 +2398,28 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     p.set_defaults(func=cmd_qwen_bge_health)
 
+    # --- BTC Objects Retrieval Lanes (M5D) ---
+    p = sub.add_parser("btc-objects-health", help="kiểm tra trạng thái index và detector class counts của BTC Objects lane")
+    p.add_argument("--artifact-dir", help="directory chứa btc_objects_postings.sqlite")
+    p.set_defaults(func=cmd_btc_objects_health)
+
+    p = sub.add_parser("btc-objects-classes", help="danh sách và thống kê 584 detector classes từ OpenImages vocabulary")
+    p.add_argument("--artifact-dir", help="directory chứa btc_objects_postings.sqlite")
+    p.add_argument("--limit", type=int, help="giới hạn số class hiển thị")
+    p.add_argument("--json", action="store_true", help="output json format")
+    p.set_defaults(func=cmd_btc_objects_classes)
+
+    p = sub.add_parser("search-btc-objects", help="truy vấn detector-class FRAME retrieval trong BTC frame space (M5D)")
+    p.add_argument("query", nargs="?", default="", help="tên class hoặc danh sách class cách nhau bằng dấu phẩy")
+    p.add_argument("--class", "-c", dest="class_name", action="append", help="tên detector class (có thể truyền nhiều lần)")
+    p.add_argument("--match-mode", choices=("ALL", "ANY", "all", "any"), default="ALL", help="chế độ khớp ALL hoặc ANY (default: ALL)")
+    p.add_argument("--min-score", "--min-detector-score", dest="min_score", type=float, default=0.1, help="ngưỡng raw detector score tối thiểu (default: 0.1)")
+    p.add_argument("--artifact-dir", help="directory chứa btc_objects_postings.sqlite")
+    p.add_argument("--top-k", type=int, default=20)
+    p.add_argument("--video-id", help="scope tìm kiếm trong 1 video cụ thể")
+    p.add_argument("--video-ids-file", help="scope tìm kiếm trong danh sách video (mỗi dòng 1 video_id)")
+    p.add_argument("--json", action="store_true", help="output json format")
+    p.set_defaults(func=cmd_search_btc_objects)
 
     return parser
 
