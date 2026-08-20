@@ -38,6 +38,11 @@ from aic2026.retrieval.providers import (
 from aic2026.retrieval.providers.base import ProviderQuery
 from aic2026.search.asr import AsrSearchError, search_asr
 from aic2026.search.compare import CompareLaneConfig, CompareOrchestrator
+from aic2026.search.sequence import (
+    SequenceOrchestrator,
+    StepConfig,
+    TEMPORAL_CAPABLE_LANES,
+)
 from aic2026.workspace import WorkspaceError, WorkspaceStore
 
 
@@ -865,6 +870,64 @@ class AsrSearchApi:
             return HTTPStatus.BAD_REQUEST, result
         return HTTPStatus.OK, result
 
+    def sequence_health(self) -> tuple[int, dict[str, Any]]:
+        return HTTPStatus.OK, {
+            "status": "OK",
+            "mode": "SEQUENCE",
+            "temporal_lanes_supported": sorted(list(TEMPORAL_CAPABLE_LANES)),
+        }
+
+    def sequence_search(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        raw_steps = request.get("steps") or []
+        if not isinstance(raw_steps, list) or len(raw_steps) == 0:
+            return HTTPStatus.BAD_REQUEST, {
+                "status": "ERROR",
+                "mode": "SEQUENCE",
+                "error": "steps list is required and must not be empty",
+            }
+
+        step_configs: list[StepConfig] = []
+        for idx, item in enumerate(raw_steps):
+            if isinstance(item, dict):
+                s_id = str(item.get("step_id") or f"S{idx+1}")
+                lane = str(item.get("lane") or "")
+                q = str(item.get("query") or item.get("q") or "")
+                opts = item.get("options") or {}
+                step_configs.append(StepConfig(step_id=s_id, lane=lane, query=q, options=opts))
+            else:
+                return HTTPStatus.BAD_REQUEST, {
+                    "status": "ERROR",
+                    "mode": "SEQUENCE",
+                    "error": f"Invalid step item at index {idx}",
+                }
+
+        top_k_per_step = int(request.get("top_k_per_step", request.get("top_k", 50)))
+        strict_order = bool(request.get("strict_order", True))
+        min_gap_ms = int(request.get("min_gap_ms", 0))
+        max_gap_ms = int(request.get("max_gap_ms", 60000))
+        max_span_ms = int(request["max_span_ms"]) if request.get("max_span_ms") is not None else None
+        candidate_video_ids = list(request.get("candidate_video_ids") or request.get("video_ids") or ()) or None
+        max_chains_per_group = int(request.get("max_chains_per_group", 50))
+        max_chains_per_video = int(request.get("max_chains_per_video", 5))
+
+        orchestrator = SequenceOrchestrator(self)
+        response = orchestrator.execute_sequence(
+            steps=step_configs,
+            top_k_per_step=top_k_per_step,
+            strict_order=strict_order,
+            min_gap_ms=min_gap_ms,
+            max_gap_ms=max_gap_ms,
+            max_span_ms=max_span_ms,
+            candidate_video_ids=candidate_video_ids,
+            max_chains_per_group=max_chains_per_group,
+            max_chains_per_video=max_chains_per_video,
+        )
+
+        payload = response.to_dict()
+        if response.status.value == "ERROR" and not response.steps:
+            return HTTPStatus.BAD_REQUEST, payload
+        return HTTPStatus.OK, payload
+
 
 def _single_parameter(
     parameters: dict[str, list[str]], field: str, *, required: bool
@@ -959,6 +1022,8 @@ def make_handler(
                     status, payload = application.btc_objects_classes()
                 elif parsed.path in {"/api/v1/search/compare/health", "/api/v1/compare/health"}:
                     status, payload = application.compare_health()
+                elif parsed.path in {"/api/v1/search/sequence/health", "/api/v1/sequence/health"}:
+                    status, payload = application.sequence_health()
                 elif parsed.path == "/api/asr/search":
                     status, payload = application.search(parse_qs(parsed.query, keep_blank_values=True))
                 else:
@@ -976,6 +1041,8 @@ def make_handler(
                 "/api/v1/search",
                 "/api/v1/search/compare",
                 "/api/v1/compare",
+                "/api/v1/search/sequence",
+                "/api/v1/sequence",
                 "/api/v1/workspace",
                 "/api/v1/lanes/siglip/search",
                 "/api/v1/lanes/siglip_custom/search",
@@ -1017,6 +1084,8 @@ def make_handler(
                     status, payload = application.unified_search(request)
                 elif parsed.path in {"/api/v1/search/compare", "/api/v1/compare"}:
                     status, payload = application.compare_search(request)
+                elif parsed.path in {"/api/v1/search/sequence", "/api/v1/sequence"}:
+                    status, payload = application.sequence_search(request)
                 elif parsed.path in {"/api/v1/lanes/siglip/search", "/api/v1/lanes/siglip_custom/search"}:
                     status, payload = application.siglip_search(request)
                 elif parsed.path in {"/api/v1/lanes/btc-clip/search", "/api/v1/lanes/btc_clip/search"}:
