@@ -1706,7 +1706,7 @@ def cmd_qwen_bge_health(args: argparse.Namespace) -> int:
     try:
         from aic2026.retrieval.providers.qwen_bge import QwenBgeProvider
 
-        artifact_dir = Path(args.artifact_dir) if args.artifact_dir else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\qwen_bge_v1")
+        artifact_dir = Path(args.artifact_dir) if args.artifact_dir else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\qwen_field_bge_large_external_v1\source")
         provider = QwenBgeProvider(artifact_dir, device=args.device)
         h = provider.health()
         _json_print(h)
@@ -1720,35 +1720,48 @@ def cmd_search_qwen_bge(args: argparse.Namespace) -> int:
     try:
         from aic2026.retrieval.providers.qwen_bge import QwenBgeProvider
 
-        artifact_dir = Path(args.artifact_dir) if args.artifact_dir else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\qwen_bge_v1")
-        provider = QwenBgeProvider(artifact_dir, device=args.device)
+        artifact_dir = Path(args.artifact_dir) if args.artifact_dir else Path(r"F:\AIC_WORK\artifacts\retrieval_v2\qwen_field_bge_large_external_v1\source")
+        db_path = Path(args.db) if getattr(args, "db", None) else None
+        provider = QwenBgeProvider(artifact_dir, device=args.device, canonical_db_path=db_path)
 
-        video_ids = ()
+        video_ids = None
         if getattr(args, "video_id", None):
             video_ids = (args.video_id,)
         elif getattr(args, "video_ids_file", None):
             with open(args.video_ids_file, "r", encoding="utf-8") as f:
                 video_ids = tuple(line.strip() for line in f if line.strip())
 
-        query = ProviderQuery(query_text=args.query, top_k=args.top_k, video_ids=video_ids)
+        field = getattr(args, "field", "full_text") or "full_text"
+        embedding_query = getattr(args, "embedding_query", None)
+
         t0 = time.perf_counter()
-        hits = provider.search(query)
+        hits = provider.search(
+            query=args.query,
+            field=field,
+            embedding_query=embedding_query,
+            top_k=args.top_k,
+            candidate_video_ids=video_ids,
+        )
         elapsed_ms = (time.perf_counter() - t0) * 1000
 
         if args.json:
             _json_print({
                 "status": "OK",
                 "lane": "qwen_bge",
+                "field": field,
                 "entity_type": "FRAME",
                 "frame_space": "CUSTOM",
                 "query": args.query,
+                "embedding_query": embedding_query or args.query,
                 "top_k": args.top_k,
                 "count": len(hits),
                 "elapsed_ms": round(elapsed_ms, 2),
                 "hits": [h.to_dict() for h in hits],
             })
         else:
-            print(f"Qwen BGE Search: '{args.query}' (took {elapsed_ms:.1f}ms, {len(hits)} hits)")
+            print(f"Qwen BGE Search [{field}]: '{args.query}' (took {elapsed_ms:.1f}ms, {len(hits)} hits)")
+            if embedding_query:
+                print(f"Embedded Query: '{embedding_query}'")
             print(f"{'Rank':<5} {'Score':<8} {'Video ID':<12} {'Keyframe UID':<28} {'Time (s)':<10} {'Caption':<40}")
             print("-" * 115)
             for h in hits:
@@ -1759,6 +1772,7 @@ def cmd_search_qwen_bge(args: argparse.Namespace) -> int:
     except Exception as exc:
         _json_print({"status": "ERROR", "error": str(exc)})
         return 2
+
 
 
 
@@ -2254,9 +2268,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--device", choices=("cuda", "cpu"), default="cuda", help="thiết bị chạy model (GPU CUDA bắt buộc cho corpus build)")
     p.set_defaults(func=cmd_build_qwen_bge)
 
-    p = sub.add_parser("search-qwen-bge", help="truy vấn Qwen semantic core documents bằng BAAI/bge-m3 qua FAISS IndexFlatIP")
+    p = sub.add_parser("search-qwen-bge", help="truy vấn Qwen semantic core documents bằng BAAI/bge-large-en-v1.5 qua FAISS IndexFlatIP")
     p.add_argument("query", help="nội dung text query")
-    p.add_argument("--artifact-dir", help="directory chứa qwen_bge.faiss và rowmap")
+    p.add_argument("--field", choices=("caption", "objects_attributes", "spatial_relations", "counts", "scene", "visible_actions", "full_text"), default="full_text", help="semantic field space (default: full_text)")
+    p.add_argument("--embedding-query", help="chuỗi query tiếng Anh hoặc chuyên biệt được encode thay cho original query")
+    p.add_argument("--artifact-dir", help="directory chứa faiss/*.faiss và mappings/*.parquet")
+    p.add_argument("--db", help="đường dẫn mapping.sqlite")
     p.add_argument("--top-k", type=int, default=20)
     p.add_argument("--video-id", help="scope tìm kiếm trong 1 video cụ thể")
     p.add_argument("--video-ids-file", help="scope tìm kiếm trong danh sách video (mỗi dòng 1 video_id)")
@@ -2265,9 +2282,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_search_qwen_bge)
 
     p = sub.add_parser("qwen-bge-health", help="kiểm tra trạng thái index và model của Qwen BGE lane")
-    p.add_argument("--artifact-dir", help="directory chứa qwen_bge.faiss và rowmap")
+    p.add_argument("--artifact-dir", help="directory chứa faiss/*.faiss và mappings/*.parquet")
     p.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     p.set_defaults(func=cmd_qwen_bge_health)
+
 
     return parser
 

@@ -6,9 +6,11 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import Any
 
-import pytest
 import numpy as np
+import pandas as pd
+import pytest
 from aic2026.retrieval.providers.qwen_bge import QwenBgeProvider
+
 from aic2026.retrieval.providers.qwen_bm25 import QwenBm25Provider
 from aic2026.retrieval.qwen_bge_index import DOCUMENT_POLICY_ID
 from aic2026.search.api import AsrSearchApi
@@ -136,6 +138,18 @@ def mock_api_qwen_text():
 
         with open(bge_dir / "qwen_bge_passport.json", "w", encoding="utf-8") as f:
             json.dump({"status": "PASS", "index_rows": 1}, f)
+
+        pd.DataFrame([{
+            "dense_row": 0,
+            "keyframe_uid": "CUSTOM:L21_V001:F1",
+            "video_id": "L21_V001",
+            "frame_idx": 1,
+            "timestamp_ms": 1000,
+            "caption": "motorcycle riding on street",
+            "doc_row_index": 0,
+            "embedding_index": 0,
+        }]).to_parquet(bge_dir / "rowmap.parquet")
+
 
         bm25_prov = QwenBm25Provider(db_path)
         mock_loader = lambda: (MockEncoder(dim), MockTokenizer())

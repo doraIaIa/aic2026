@@ -91,7 +91,9 @@ class AsrSearchApi:
             self.media_bm25_provider,
             self.qwen_structured_provider,
             self.qwen_bm25_provider,
+            self.qwen_bge_provider,
         ]:
+
             if p is not None and hasattr(p, "close"):
                 try:
                     p.close()
@@ -604,9 +606,12 @@ class AsrSearchApi:
 
     def qwen_bge_health(self) -> tuple[int, dict[str, Any]]:
         if self.qwen_bge_provider is None:
-            default_artifact_dir = Path(r"F:\AIC_WORK\artifacts\retrieval_v2\qwen_bge_v1")
-            if (default_artifact_dir / "qwen_bge.faiss").exists():
-                self.qwen_bge_provider = QwenBgeProvider(default_artifact_dir)
+            default_artifact_dir = Path(r"F:\AIC_WORK\artifacts\retrieval_v2\qwen_field_bge_large_external_v1\source")
+            legacy_dir = Path(r"F:\AIC_WORK\artifacts\retrieval_v2\qwen_bge_v1")
+            target_dir = default_artifact_dir if default_artifact_dir.exists() else legacy_dir
+            if target_dir.exists() or (self.database.parent / "bge_index").exists():
+                chosen = (self.database.parent / "bge_index") if (self.database.parent / "bge_index").exists() else target_dir
+                self.qwen_bge_provider = QwenBgeProvider(chosen, canonical_db_path=self.database)
             else:
                 return HTTPStatus.SERVICE_UNAVAILABLE, {
                     "lane_id": "qwen_bge",
@@ -616,6 +621,7 @@ class AsrSearchApi:
         h = self.qwen_bge_provider.health()
         status_code = HTTPStatus.OK if h.get("status") == "OK" else HTTPStatus.SERVICE_UNAVAILABLE
         return status_code, h
+
 
     def qwen_bge_search(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         if self.qwen_bge_provider is None:
@@ -628,31 +634,41 @@ class AsrSearchApi:
         if not query_text or not str(query_text).strip():
             return HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": "query parameter is required"}
 
+        field = request.get("field", "full_text")
+        from aic2026.retrieval.providers.qwen_bge import ACCEPTED_FIELDS
+        if field not in ACCEPTED_FIELDS:
+            return HTTPStatus.BAD_REQUEST, {"status": "ERROR", "error": f"Invalid field '{field}'. Allowed fields: {list(ACCEPTED_FIELDS)}"}
+
+        embedding_query = request.get("embedding_query")
         top_k = int(request.get("top_k", 50))
         video_ids = tuple(request.get("candidate_video_ids") or request.get("video_ids") or ())
 
         t0 = time.perf_counter()
         hits = self.qwen_bge_provider.search(
             query=query_text,
+            field=field,
+            embedding_query=embedding_query,
             top_k=top_k,
             candidate_video_ids=video_ids if video_ids else None,
             query_id=request.get("query_id"),
         )
-
         elapsed_ms = (time.perf_counter() - t0) * 1000
 
         return HTTPStatus.OK, {
             "status": "OK",
             "lane": "qwen_bge",
+            "field": field,
             "entity_type": "FRAME",
             "frame_space": "CUSTOM",
             "query": query_text,
+            "embedding_query": embedding_query or query_text,
             "query_id": request.get("query_id"),
             "top_k": top_k,
             "count": len(hits),
             "elapsed_ms": round(elapsed_ms, 2),
             "hits": [h.to_dict() for h in hits],
         }
+
 
 
 
