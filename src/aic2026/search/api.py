@@ -82,6 +82,28 @@ class AsrSearchApi:
         self.qwen_bge_provider = qwen_bge_provider
         self.workspace = WorkspaceStore(self.database)
 
+    def close(self) -> None:
+        """Close provider and workspace database connections."""
+        for p in [
+            self.asr_bm25_provider,
+            self.ocr_bm25_provider,
+            self.ocr_trigram_provider,
+            self.media_bm25_provider,
+            self.qwen_structured_provider,
+            self.qwen_bm25_provider,
+        ]:
+            if p is not None and hasattr(p, "close"):
+                try:
+                    p.close()
+                except Exception:
+                    pass
+        if hasattr(self.workspace, "close"):
+            try:
+                self.workspace.close()
+            except Exception:
+                pass
+
+
 
 
 
@@ -530,7 +552,7 @@ class AsrSearchApi:
 
     def qwen_bm25_health(self) -> tuple[int, dict[str, Any]]:
         if self.qwen_bm25_provider is None:
-            default_db = Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+            default_db = self.database if (self.database and self.database.exists()) else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
             if default_db.exists():
                 self.qwen_bm25_provider = QwenBm25Provider(default_db)
             else:
@@ -542,6 +564,7 @@ class AsrSearchApi:
         h = self.qwen_bm25_provider.health()
         status_code = HTTPStatus.OK if h.get("status") == "OK" else HTTPStatus.SERVICE_UNAVAILABLE
         return status_code, h
+
 
     def qwen_bm25_search(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         if self.qwen_bm25_provider is None:

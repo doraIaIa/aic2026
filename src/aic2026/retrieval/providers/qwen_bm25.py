@@ -154,29 +154,29 @@ class QwenBm25Provider:
         query_id: str | None = None,
     ) -> list[ProviderHit]:
         """Search Qwen captions using SQLite FTS5 BM25 ranking."""
+        scoped_vids: list[str] | None = None
         if isinstance(query, ProviderQuery):
             q_text = query.query_text
             top_k = query.top_k or top_k
-            candidate_video_ids = query.video_ids if query.video_ids else candidate_video_ids
+            if query.video_ids and len(query.video_ids) > 0:
+                scoped_vids = [v.strip() for v in query.video_ids if v and v.strip()]
+                if not scoped_vids:
+                    return []
             query_id = getattr(query, "query_id", query_id)
         else:
             q_text = str(query)
-
+            if candidate_video_ids is not None:
+                scoped_vids = [v.strip() for v in candidate_video_ids if v and v.strip()]
+                if not scoped_vids:
+                    return []
 
         q_text = (q_text or "").strip()
         if not q_text:
             return []
 
-        # Candidate video scoping
-        if candidate_video_ids is not None:
-            scoped_vids = [v.strip() for v in candidate_video_ids if v and v.strip()]
-            if not scoped_vids:
-                return []  # Scoped to empty list -> 0 hits
-        else:
-            scoped_vids = None
-
         safe_q = _safe_fts5_query(q_text)
         accentless_q = _safe_fts5_query(_to_accentless(q_text))
+
 
         if not safe_q and not accentless_q:
             return []
