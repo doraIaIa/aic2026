@@ -37,6 +37,7 @@ from aic2026.retrieval.providers import (
 )
 from aic2026.retrieval.providers.base import ProviderQuery
 from aic2026.search.asr import AsrSearchError, search_asr
+from aic2026.search.compare import CompareLaneConfig, CompareOrchestrator
 from aic2026.workspace import WorkspaceError, WorkspaceStore
 
 
@@ -807,6 +808,63 @@ class AsrSearchApi:
     def unified_search(self, request: Any) -> tuple[int, dict[str, Any]]:
         return HTTPStatus.OK, self.orchestrator.search(request)
 
+    def compare_health(self) -> tuple[int, dict[str, Any]]:
+        return HTTPStatus.OK, {
+            "status": "OK",
+            "mode": "COMPARE",
+            "lanes_supported": [
+                "siglip_custom",
+                "btc_clip",
+                "asr_bm25",
+                "asr_bge",
+                "ocr_bm25",
+                "ocr_trigram",
+                "ocr_bge",
+                "media_bm25",
+                "qwen_bm25",
+                "qwen_bge",
+                "qwen_structured",
+                "btc_objects",
+            ],
+        }
+
+    def compare_search(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        query = request.get("query") or ""
+        top_k = int(request.get("top_k", 20))
+        raw_lanes = request.get("lanes") or []
+        if not isinstance(raw_lanes, list) or len(raw_lanes) == 0:
+            return HTTPStatus.BAD_REQUEST, {
+                "status": "ERROR",
+                "mode": "COMPARE",
+                "error": "lanes list is required and must not be empty",
+            }
+
+        lane_configs: list[CompareLaneConfig] = []
+        for item in raw_lanes:
+            if isinstance(item, str):
+                lane_configs.append(CompareLaneConfig(lane=item, enabled=True, options={}))
+            elif isinstance(item, dict):
+                lane_name = item.get("lane") or item.get("lane_id") or ""
+                enabled = bool(item.get("enabled", True))
+                options = item.get("options") or {}
+                if lane_name:
+                    lane_configs.append(CompareLaneConfig(lane=lane_name, enabled=enabled, options=options))
+
+        candidate_video_ids = tuple(request.get("candidate_video_ids") or request.get("video_ids") or ())
+        query_id = request.get("query_id")
+
+        orchestrator = CompareOrchestrator(self)
+        result = orchestrator.execute_compare(
+            query=query,
+            lanes=lane_configs,
+            top_k=top_k,
+            candidate_video_ids=candidate_video_ids or None,
+            query_id=query_id,
+        )
+        if result.get("status") == "ERROR" and not result.get("lanes"):
+            return HTTPStatus.BAD_REQUEST, result
+        return HTTPStatus.OK, result
+
 
 def _single_parameter(
     parameters: dict[str, list[str]], field: str, *, required: bool
@@ -899,6 +957,8 @@ def make_handler(
                     status, payload = application.btc_objects_health()
                 elif parsed.path in {"/api/v1/lanes/btc-objects/classes", "/api/v1/lanes/btc_objects/classes"}:
                     status, payload = application.btc_objects_classes()
+                elif parsed.path in {"/api/v1/search/compare/health", "/api/v1/compare/health"}:
+                    status, payload = application.compare_health()
                 elif parsed.path == "/api/asr/search":
                     status, payload = application.search(parse_qs(parsed.query, keep_blank_values=True))
                 else:
@@ -914,6 +974,8 @@ def make_handler(
             parsed = urlparse(self.path)
             valid_post_paths = {
                 "/api/v1/search",
+                "/api/v1/search/compare",
+                "/api/v1/compare",
                 "/api/v1/workspace",
                 "/api/v1/lanes/siglip/search",
                 "/api/v1/lanes/siglip_custom/search",
@@ -953,6 +1015,8 @@ def make_handler(
                 request = json.loads(self.rfile.read(length).decode("utf-8"))
                 if parsed.path == "/api/v1/search":
                     status, payload = application.unified_search(request)
+                elif parsed.path in {"/api/v1/search/compare", "/api/v1/compare"}:
+                    status, payload = application.compare_search(request)
                 elif parsed.path in {"/api/v1/lanes/siglip/search", "/api/v1/lanes/siglip_custom/search"}:
                     status, payload = application.siglip_search(request)
                 elif parsed.path in {"/api/v1/lanes/btc-clip/search", "/api/v1/lanes/btc_clip/search"}:
