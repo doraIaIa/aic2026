@@ -207,8 +207,10 @@ class MediaResolver:
         *,
         manifest_path: str | Path | None = None,
         video_subdir: str = "data_extracted/video",
+        fallback_roots: list[str | Path] | None = None,
     ) -> None:
         self._media_root = Path(media_root)
+        self._fallback_roots = [Path(r) for r in (fallback_roots or []) if r]
         self._video_subdir = video_subdir
         self._manifest_path = Path(manifest_path) if manifest_path else None
         self._manifest_lock = threading.Lock()
@@ -218,9 +220,17 @@ class MediaResolver:
 
     def is_available(self) -> bool:
         try:
-            return self._media_root.is_dir()
+            if self._media_root.is_dir():
+                return True
         except OSError:
-            return False
+            pass
+        for fb in self._fallback_roots:
+            try:
+                if fb.is_dir():
+                    return True
+            except OSError:
+                pass
+        return False
 
     def _load_manifest(self) -> dict[str, str]:
         with self._manifest_lock:
@@ -255,22 +265,38 @@ class MediaResolver:
             raise MediaUnavailableError("Media root not available")
         self._validate_video_id(video_id)
         manifest = self._load_manifest()
-        if manifest:
-            rel = manifest.get(video_id)
-            if rel is None:
-                raise VideoNotFoundError(f"video_id not in manifest: {video_id}")
-            candidate = self._media_root / rel
-        else:
-            # Fallback to subdir convention: data_extracted/video/<video_id>.mp4
-            candidate = self._media_root / self._video_subdir / f"{video_id}.mp4"
-        # Safety: ensure resolved path stays inside media_root
-        try:
-            candidate.resolve().relative_to(self._media_root.resolve())
-        except ValueError:
-            raise InvalidRequestError("Resolved path escapes media_root (path traversal)")
-        if not candidate.exists():
-            raise VideoNotFoundError(f"Video file not found for video_id={video_id}")
-        return candidate
+        all_roots = [self._media_root] + self._fallback_roots
+
+        for root in all_roots:
+            try:
+                if not root.exists():
+                    continue
+            except OSError:
+                continue
+
+            if manifest:
+                rel = manifest.get(video_id)
+                if rel:
+                    candidate = root / rel
+                    try:
+                        candidate.resolve().relative_to(root.resolve())
+                        if candidate.is_file():
+                            return candidate
+                    except (ValueError, OSError):
+                        pass
+
+            # Direct video search
+            for sub in [self._video_subdir, "video", "data_extracted/video", ""]:
+                candidate = (root / sub / f"{video_id}.mp4") if sub else (root / f"{video_id}.mp4")
+                try:
+                    candidate_resolved = candidate.resolve()
+                    candidate_resolved.relative_to(root.resolve())
+                    if candidate_resolved.is_file():
+                        return candidate_resolved
+                except (ValueError, OSError):
+                    pass
+
+        raise VideoNotFoundError(f"Video file not found for video_id={video_id}")
 
     # ------------------------------------------------------------------
     # Public API – returns only safe data, never raw paths
@@ -319,15 +345,35 @@ class MediaResolver:
         """
         if not isinstance(csv_n, int) or csv_n < 1:
             raise InvalidRequestError("csv_n must be a positive 1-based ordinal")
-        self._resolve_path(video_id)  # validates availability, manifest, and video id
-        candidate = self._media_root / "data_extracted" / "keyframes" / video_id / f"{csv_n:03d}.jpg"
-        try:
-            candidate.resolve().relative_to(self._media_root.resolve())
-        except ValueError as exc:
-            raise InvalidRequestError("Resolved keyframe path escapes media_root") from exc
-        if not candidate.is_file():
-            raise VideoNotFoundError(f"Keyframe ordinal not found for video_id={video_id}: {csv_n}")
-        return candidate
+        self._validate_video_id(video_id)
+        all_roots = [self._media_root] + self._fallback_roots
+
+        for root in all_roots:
+            try:
+                if not root.exists():
+                    continue
+            except OSError:
+                continue
+
+            for sub in ["data_extracted/keyframes", "keyframes", "output/keyframes"]:
+                candidate = root / sub / video_id / f"{csv_n:03d}.jpg"
+                try:
+                    candidate_resolved = candidate.resolve()
+                    candidate_resolved.relative_to(root.resolve())
+                    if candidate_resolved.is_file():
+                        return candidate_resolved
+                except (ValueError, OSError):
+                    pass
+                candidate2 = root / sub / video_id / f"{csv_n:06d}.jpg"
+                try:
+                    candidate2_resolved = candidate2.resolve()
+                    candidate2_resolved.relative_to(root.resolve())
+                    if candidate2_resolved.is_file():
+                        return candidate2_resolved
+                except (ValueError, OSError):
+                    pass
+
+        raise VideoNotFoundError(f"Keyframe ordinal not found for video_id={video_id}: {csv_n}")
 
     def video_path_for_streaming(self, video_id: str) -> Path:
         """Internal only – returns path for streaming; caller must not expose this."""

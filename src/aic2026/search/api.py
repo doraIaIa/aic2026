@@ -92,6 +92,13 @@ class AsrSearchApi:
         self.btc_objects_provider = btc_objects_provider
         self.workspace = WorkspaceStore(self.database)
 
+    @property
+    def _mapping_db(self) -> Path:
+        mapping_path = Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+        if mapping_path.exists():
+            return mapping_path
+        return self.database
+
     def close(self) -> None:
         """Close provider and workspace database connections."""
         for p in [
@@ -217,13 +224,14 @@ class AsrSearchApi:
 
     def asr_bm25_health(self) -> tuple[int, dict[str, Any]]:
         if self.asr_bm25_provider is None:
-            if self.database.exists():
-                self.asr_bm25_provider = AsrBm25Provider(self.database)
+            target_db = self._mapping_db
+            if target_db.exists():
+                self.asr_bm25_provider = AsrBm25Provider(target_db)
             else:
                 return HTTPStatus.SERVICE_UNAVAILABLE, {
                     "lane_id": "asr_bm25",
                     "status": "UNAVAILABLE",
-                    "error": f"Database not found at {self.database}",
+                    "error": f"Database not found at {target_db}",
                 }
         h = self.asr_bm25_provider.health()
         status_code = HTTPStatus.OK if h.get("status") == "OK" else HTTPStatus.SERVICE_UNAVAILABLE
@@ -231,12 +239,13 @@ class AsrSearchApi:
 
     def asr_bm25_search(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         if self.asr_bm25_provider is None:
-            if self.database.exists():
-                self.asr_bm25_provider = AsrBm25Provider(self.database)
+            target_db = self._mapping_db
+            if target_db.exists():
+                self.asr_bm25_provider = AsrBm25Provider(target_db)
             else:
                 return HTTPStatus.SERVICE_UNAVAILABLE, {
                     "status": "ERROR",
-                    "error": f"Database not found at {self.database}",
+                    "error": f"Database not found at {target_db}",
                 }
         query_text = request.get("query") or request.get("query_text") or ""
         if not isinstance(query_text, str) or not query_text.strip():
@@ -309,7 +318,7 @@ class AsrSearchApi:
 
     def ocr_bm25_health(self) -> tuple[int, dict[str, Any]]:
         if self.ocr_bm25_provider is None:
-            default_db = self.database if self.database.exists() else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+            default_db = self._mapping_db
             if default_db.exists():
                 self.ocr_bm25_provider = OcrBm25Provider(default_db)
             else:
@@ -354,7 +363,7 @@ class AsrSearchApi:
     def ocr_trigram_health(self) -> tuple[int, dict[str, Any]]:
         if self.ocr_trigram_provider is None:
             default_dir = Path(r"F:\AIC_WORK\artifacts\retrieval_v2\ocr_trigram_v1")
-            default_db = self.database if self.database.exists() else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+            default_db = self._mapping_db
             if default_dir.exists():
                 self.ocr_trigram_provider = OcrTrigramProvider(default_dir, canonical_db_path=default_db)
             else:
@@ -399,7 +408,7 @@ class AsrSearchApi:
     def ocr_bge_health(self) -> tuple[int, dict[str, Any]]:
         if self.ocr_bge_provider is None:
             default_dir = Path(r"F:\AIC_WORK\artifacts\retrieval_v2\ocr_bge_v1")
-            default_db = self.database if self.database.exists() else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+            default_db = self._mapping_db
             if default_dir.exists():
                 self.ocr_bge_provider = OcrBgeProvider(default_dir, canonical_db_path=default_db)
             else:
@@ -443,7 +452,7 @@ class AsrSearchApi:
 
     def media_bm25_health(self) -> tuple[int, dict[str, Any]]:
         if self.media_bm25_provider is None:
-            default_db = self.database if self.database.exists() else Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+            default_db = self._mapping_db
             if default_db.exists():
                 self.media_bm25_provider = MediaBm25Provider(default_db)
             else:
@@ -1177,9 +1186,15 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.reconfigure(encoding="utf-8")
     args = build_parser().parse_args(argv)
     resolver = PathResolver.from_config(load_config(args.config))
-    database = Path(args.database) if args.database else resolver.work("db/aic.sqlite")
+    default_mapping = Path(r"F:\AIC_WORK\artifacts\retrieval_data_v1\runtime\mapping.sqlite")
+    if args.database:
+        database = Path(args.database)
+    elif default_mapping.is_file():
+        database = default_mapping
+    else:
+        database = resolver.work("db/aic.sqlite")
     if not database.is_file():
-        print(f"ASR search database not found: {database}", file=sys.stderr)
+        print(f"Search database not found: {database}", file=sys.stderr)
         return 2
     capability_service = CapabilityService(
         {
@@ -1192,9 +1207,13 @@ def main(argv: list[str] | None = None) -> int:
     orchestrator = SearchOrchestrator(capability_service.providers)
     # Media resolver – failure-isolated: missing media root does not abort startup
     media_manifest = resolver.work("audit/videos.jsonl")
+    drive_data_root = Path(r"G:\.shortcut-targets-by-id\1DRuEcR4suoHb4rKrPDtzt9FRfkvfqfHv\AIC_2026")
+    primary_data_root = drive_data_root if drive_data_root.exists() else resolver.data_root
+    fallback_roots = [Path(r"F:\KTLT"), resolver.data_root]
     media_resolver = MediaResolver(
-        resolver.data_root,
+        primary_data_root,
         manifest_path=media_manifest if media_manifest.exists() else None,
+        fallback_roots=fallback_roots,
     )
     server = create_server(
         database,
