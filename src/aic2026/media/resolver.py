@@ -51,7 +51,22 @@ class InvalidRequestError(MediaError):
 class VideoMeta:
     """Immutable container for video metadata. No raw path exposed."""
 
-    __slots__ = ("video_id", "duration_sec", "fps", "frame_count", "width", "height", "media_available")
+    __slots__ = (
+        "video_id",
+        "duration_sec",
+        "fps",
+        "frame_count",
+        "width",
+        "height",
+        "media_available",
+        "exact_frame_supported",
+        "range_stream_supported",
+        "frame_count_reliable",
+        "fps_num",
+        "fps_den",
+        "time_base",
+        "codec",
+    )
 
     def __init__(
         self,
@@ -63,6 +78,13 @@ class VideoMeta:
         width: int,
         height: int,
         media_available: bool,
+        exact_frame_supported: bool = True,
+        range_stream_supported: bool = True,
+        frame_count_reliable: bool = True,
+        fps_num: int = 25,
+        fps_den: int = 1,
+        time_base: str = "1/1000",
+        codec: str = "h264",
     ) -> None:
         self.video_id = video_id
         self.duration_sec = duration_sec
@@ -71,6 +93,13 @@ class VideoMeta:
         self.width = width
         self.height = height
         self.media_available = media_available
+        self.exact_frame_supported = exact_frame_supported
+        self.range_stream_supported = range_stream_supported
+        self.frame_count_reliable = frame_count_reliable
+        self.fps_num = fps_num
+        self.fps_den = fps_den
+        self.time_base = time_base
+        self.codec = codec
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -81,6 +110,13 @@ class VideoMeta:
             "width": self.width,
             "height": self.height,
             "media_available": self.media_available,
+            "exact_frame_supported": self.exact_frame_supported,
+            "range_stream_supported": self.range_stream_supported,
+            "frame_count_reliable": self.frame_count_reliable,
+            "fps_num": self.fps_num,
+            "fps_den": self.fps_den,
+            "time_base": self.time_base,
+            "codec": self.codec,
         }
 
 
@@ -89,24 +125,72 @@ class VideoMeta:
 # ---------------------------------------------------------------------------
 
 class FrameResolveResult:
-    __slots__ = ("video_id", "requested_time_sec", "decoded_frame_ordinal", "decoded_pts_sec", "competition_frame_id", "mapping_method")
+    __slots__ = (
+        "video_id",
+        "requested_time_sec",
+        "requested_timestamp_ms",
+        "requested_frame_idx",
+        "decoded_frame_ordinal",
+        "resolved_frame_idx",
+        "decoded_pts_sec",
+        "resolved_pts_ms",
+        "delta_ms",
+        "authority",
+        "mapping_method",
+        "method",
+        "competition_frame_id",
+        "jpeg_url",
+    )
 
-    def __init__(self, *, video_id: str, requested_time_sec: float, decoded_frame_ordinal: int, decoded_pts_sec: float, competition_frame_id: int, mapping_method: str) -> None:
+    def __init__(
+        self,
+        *,
+        video_id: str,
+        requested_time_sec: float,
+        requested_timestamp_ms: Optional[int] = None,
+        requested_frame_idx: Optional[int] = None,
+        decoded_frame_ordinal: int,
+        decoded_pts_sec: float,
+        competition_frame_id: int,
+        mapping_method: str = "PTS_AWARE",
+        method: str = "PTS_AWARE",
+        authority: str = "SOURCE_VIDEO",
+    ) -> None:
         self.video_id = video_id
         self.requested_time_sec = requested_time_sec
+        self.requested_timestamp_ms = (
+            requested_timestamp_ms
+            if requested_timestamp_ms is not None
+            else int(round(requested_time_sec * 1000))
+        )
+        self.requested_frame_idx = requested_frame_idx
         self.decoded_frame_ordinal = decoded_frame_ordinal
+        self.resolved_frame_idx = decoded_frame_ordinal
         self.decoded_pts_sec = decoded_pts_sec
+        self.resolved_pts_ms = int(round(decoded_pts_sec * 1000))
+        self.delta_ms = self.resolved_pts_ms - self.requested_timestamp_ms
         self.competition_frame_id = competition_frame_id
         self.mapping_method = mapping_method
+        self.method = method
+        self.authority = authority
+        self.jpeg_url = f"/api/v1/media/{video_id}/frames/{decoded_frame_ordinal}"
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "video_id": self.video_id,
             "requested_time_sec": self.requested_time_sec,
+            "requested_timestamp_ms": self.requested_timestamp_ms,
+            "requested_frame_idx": self.requested_frame_idx,
             "decoded_frame_ordinal": self.decoded_frame_ordinal,
+            "resolved_frame_idx": self.resolved_frame_idx,
             "decoded_pts_sec": self.decoded_pts_sec,
-            "competition_frame_id": self.competition_frame_id,
+            "resolved_pts_ms": self.resolved_pts_ms,
+            "delta_ms": self.delta_ms,
+            "authority": self.authority,
             "mapping_method": self.mapping_method,
+            "method": self.method,
+            "competition_frame_id": self.competition_frame_id,
+            "jpeg_url": self.jpeg_url,
         }
 
 
@@ -280,7 +364,7 @@ def _ffprobe_video_meta(video_id: str, path: Path) -> VideoMeta:
         "-v", "error",
         "-select_streams", "v:0",
         "-show_entries",
-        "stream=width,height,r_frame_rate,nb_frames:format=duration",
+        "stream=width,height,r_frame_rate,codec_name,time_base,nb_frames:format=duration",
         "-of", "json",
         str(path),
     ])
@@ -297,20 +381,27 @@ def _ffprobe_video_meta(video_id: str, path: Path) -> VideoMeta:
     stream = streams[0]
     width = int(stream.get("width", 0))
     height = int(stream.get("height", 0))
+    codec = str(stream.get("codec_name", "h264"))
+    time_base = str(stream.get("time_base", "1/1000"))
+
     # Parse rational FPS e.g. "25/1" or "30000/1001"
     rfr = stream.get("r_frame_rate", "25/1")
     try:
         num, den = map(int, rfr.split("/"))
         fps = num / den if den else 25.0
     except Exception:
+        num, den = 25, 1
         fps = 25.0
+
     duration_sec = float(fmt.get("duration") or stream.get("duration", 0))
     # nb_frames may be absent in some formats
     nb_frames_raw = stream.get("nb_frames")
+    frame_count_reliable = True
     if nb_frames_raw is not None and str(nb_frames_raw).isdigit():
         frame_count = int(nb_frames_raw)
     else:
         frame_count = max(1, round(duration_sec * fps))
+        frame_count_reliable = False
 
     return VideoMeta(
         video_id=video_id,
@@ -320,6 +411,13 @@ def _ffprobe_video_meta(video_id: str, path: Path) -> VideoMeta:
         width=width,
         height=height,
         media_available=True,
+        exact_frame_supported=True,
+        range_stream_supported=True,
+        frame_count_reliable=frame_count_reliable,
+        fps_num=num,
+        fps_den=den,
+        time_base=time_base,
+        codec=codec,
     )
 
 
@@ -343,10 +441,13 @@ def _resolve_frame_at_time(
     return FrameResolveResult(
         video_id=video_id,
         requested_time_sec=time_sec,
+        requested_timestamp_ms=int(round(time_sec * 1000)),
         decoded_frame_ordinal=identity.decoded_frame_ordinal,
         decoded_pts_sec=identity.decoded_pts_sec,
         competition_frame_id=identity.competition_frame_id,
         mapping_method=identity.mapping_method,
+        method="PTS_AWARE",
+        authority="SOURCE_VIDEO",
     )
 
 
@@ -358,7 +459,7 @@ def _frame_id_to_pts(path: Path, frame_id: int, meta: VideoMeta) -> float:
 
 
 def decode_frame_jpeg(path: Path, frame_id: int, meta: VideoMeta) -> bytes:
-    """Decode frame_id to JPEG bytes using exact timeline decoding.
+    """Decode frame_id to JPEG bytes using exact timeline decoding and LRU cache.
     
     Instead of using `-ss {pts}` which is approximate due to keyframe snapping,
     this uses a hybrid approach:
@@ -366,6 +467,12 @@ def decode_frame_jpeg(path: Path, frame_id: int, meta: VideoMeta) -> bytes:
     2. `-copyts` to preserve absolute timestamps.
     3. `select='gte(t,{pts - 0.001})'` to decode exactly the requested frame.
     """
+    from aic2026.media.cache import get_global_frame_cache
+    cache = get_global_frame_cache()
+    cached = cache.get(meta.video_id, frame_id)
+    if cached:
+        return cached
+
     target_pts = _frame_id_to_pts(path, frame_id, meta)
     seek_pts = max(0.0, target_pts - 5.0)
     
@@ -390,9 +497,15 @@ def decode_frame_jpeg(path: Path, frame_id: int, meta: VideoMeta) -> bytes:
             check=False,
         )
     except FileNotFoundError:
+        cache.errors += 1
         raise DecodeError("ffmpeg not found; install ffmpeg package")
     except subprocess.TimeoutExpired:
+        cache.errors += 1
         raise DecodeError("ffmpeg timed out decoding frame")
     if result.returncode != 0 or not result.stdout:
+        cache.errors += 1
         raise DecodeError(f"ffmpeg decode error (rc={result.returncode}): {result.stderr[:300]}")
-    return result.stdout
+    
+    jpeg_bytes = result.stdout
+    cache.put(meta.video_id, frame_id, jpeg_bytes)
+    return jpeg_bytes

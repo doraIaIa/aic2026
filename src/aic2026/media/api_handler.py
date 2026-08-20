@@ -31,12 +31,15 @@ from aic2026.media.resolver import (
     decode_frame_jpeg,
 )
 
-# Pattern: /api/v1/media/{video_id}/info|stream|resolve-frame
+from aic2026.media.nearest_keyframe import get_global_keyframe_resolver
+
+# Pattern: /api/v1/media/{video_id}/info|stream|resolve-frame|nearest-keyframes
 _INFO_RE = re.compile(r"^/api/v1/media/([^/]+)/info$")
 _STREAM_RE = re.compile(r"^/api/v1/media/([^/]+)/stream$")
 _FRAME_RE = re.compile(r"^/api/v1/media/([^/]+)/frames/(\d+)$")
 _KEYFRAME_RE = re.compile(r"^/api/v1/media/([^/]+)/keyframes/(\d+)$")
 _RESOLVE_RE = re.compile(r"^/api/v1/media/([^/]+)/resolve-frame$")
+_NEAREST_RE = re.compile(r"^/api/v1/media/([^/]+)/nearest-keyframes$")
 
 
 def _json_error(status: int, message: str) -> tuple[int, bytes, str]:
@@ -80,12 +83,42 @@ def handle_media_get(
         except DecodeError as exc:
             return _json_error(HTTPStatus.INTERNAL_SERVER_ERROR, f"DECODE_ERROR: {exc}")
 
+    # --- /nearest-keyframes ---
+    m = _NEAREST_RE.match(parsed_path)
+    if m:
+        video_id = m.group(1)
+        qs = parse_qs(query_string, keep_blank_values=True)
+        target_raw = (qs.get("target_ms") or qs.get("pts_ms") or qs.get("time_ms") or [""])[0].strip()
+        if not target_raw:
+            return _json_error(HTTPStatus.BAD_REQUEST, "target_ms parameter is required")
+        try:
+            target_ms = int(round(float(target_raw)))
+        except ValueError:
+            return _json_error(HTTPStatus.BAD_REQUEST, "target_ms must be a valid integer/number")
+
+        try:
+            # Verify video_id existence first
+            resolver.video_info(video_id)
+            kf_resolver = get_global_keyframe_resolver()
+            res = kf_resolver.resolve_all_spaces(video_id, target_ms)
+            return _json_ok(res)
+        except VideoNotFoundError as exc:
+            return _json_error(HTTPStatus.NOT_FOUND, str(exc))
+        except Exception as exc:
+            return _json_error(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
+
     # --- /resolve-frame ---
     m = _RESOLVE_RE.match(parsed_path)
     if m:
         video_id = m.group(1)
         qs = parse_qs(query_string, keep_blank_values=True)
-        time_raw = (qs.get("time_sec") or [""])[0].strip()
+        time_raw = (qs.get("time_sec") or qs.get("timestamp_sec") or [""])[0].strip()
+        if not time_raw and "timestamp_ms" in qs:
+            try:
+                time_raw = str(float(qs["timestamp_ms"][0]) / 1000.0)
+            except Exception:
+                pass
+
         if not time_raw:
             return _json_error(HTTPStatus.BAD_REQUEST, "time_sec query parameter is required")
         try:
@@ -115,6 +148,7 @@ def handle_media_get(
             video_path, pts_sec = resolver.frame_path(video_id, frame_id)
             meta = resolver.video_info(video_id)
             jpeg_bytes = decode_frame_jpeg(video_path, frame_id, meta)
+            return HTTPStatus.OK, jpeg_bytes, "image/jpeg"
         except MediaUnavailableError as exc:
             return _json_error(HTTPStatus.SERVICE_UNAVAILABLE, str(exc))
         except VideoNotFoundError as exc:
@@ -125,7 +159,6 @@ def handle_media_get(
             return _json_error(HTTPStatus.BAD_REQUEST, str(exc))
         except DecodeError as exc:
             return _json_error(HTTPStatus.INTERNAL_SERVER_ERROR, f"DECODE_ERROR: {exc}")
-        return HTTPStatus.OK, jpeg_bytes, "image/jpeg"
 
     # --- /keyframes/{csv_n} ---
     # This intentionally uses CSV.n / keyframe ordinal, never frame_idx.
@@ -150,13 +183,13 @@ def handle_media_get(
         video_id = m.group(1)
         try:
             video_path = resolver.video_path_for_streaming(video_id)
+            return _stream_response(video_path, range_header)
         except MediaUnavailableError as exc:
             return _json_error(HTTPStatus.SERVICE_UNAVAILABLE, str(exc))
         except VideoNotFoundError as exc:
             return _json_error(HTTPStatus.NOT_FOUND, str(exc))
         except InvalidRequestError as exc:
             return _json_error(HTTPStatus.BAD_REQUEST, str(exc))
-        return _stream_response(video_path, range_header)
 
     return None  # path not matched
 
@@ -165,7 +198,7 @@ def _stream_response(
     video_path: Path,
     range_header: str | None,
 ) -> tuple[int, bytes, str]:
-    """Read video bytes respecting Range header. Chunked via bytes read."""
+    """Read video bytes respecting Range header."""
     total_size = video_path.stat().st_size
 
     start = 0
@@ -195,7 +228,6 @@ def _stream_response(
         return _json_error(HTTPStatus.INTERNAL_SERVER_ERROR, f"Read error: {exc}")
 
     status = HTTPStatus.PARTIAL_CONTENT if partial else HTTPStatus.OK
-    # Return raw bytes; caller writes Content-Range etc.
     return status, data, "video/mp4"
 
 
@@ -216,18 +248,26 @@ def write_stream_response(
     handler.send_response(status)
     handler.send_header("Content-Type", content_type)
     handler.send_header("Content-Length", str(len(body)))
-    if content_type.startswith("video/") and range_header:
-        # Content-Range was already validated; derive from body size
-        handler.send_header("Accept-Ranges", "bytes")
-        # Re-parse to compute range headers for response
-        m = re.match(r"bytes=(\d+)-(\d*)", range_header.strip(), re.IGNORECASE)
-        if m:
-            total_size = len(body)  # actual bytes returned
-            handler.send_header("Content-Range", f"bytes */{total_size}")
 
-    if content_type.startswith("image/jpeg") or content_type.startswith("video/"):
-        # Attach frame metadata headers if available
-        pass  # metadata returned in JSON for /info, not inline
+    if content_type.startswith("video/"):
+        handler.send_header("Accept-Ranges", "bytes")
+        if range_header and status == HTTPStatus.PARTIAL_CONTENT:
+            m = re.match(r"bytes=(\d+)-(\d*)", range_header.strip(), re.IGNORECASE)
+            if m:
+                start = int(m.group(1))
+                end_str = m.group(2)
+                chunk_len = len(body)
+                end = int(end_str) if end_str else (start + chunk_len - 1)
+                # Compute total size from video_path if possible
+                try:
+                    parsed_path = urlparse(path).path
+                    m_str = _STREAM_RE.match(parsed_path)
+                    if m_str and resolver:
+                        v_path = resolver.video_path_for_streaming(m_str.group(1))
+                        total_sz = v_path.stat().st_size
+                        handler.send_header("Content-Range", f"bytes {start}-{start + chunk_len - 1}/{total_sz}")
+                except Exception:
+                    pass
 
     origin = handler.headers.get("Origin", "")
     if origin in allowed_origins:
